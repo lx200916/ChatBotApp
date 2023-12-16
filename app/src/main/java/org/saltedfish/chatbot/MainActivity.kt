@@ -52,6 +52,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -71,6 +72,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -141,10 +143,8 @@ fun Home(navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun Chat(navController: NavController) {
-    val messages = remember {
-        mutableStateListOf<Message>()
-    }
+fun Chat(navController: NavController,vm:chatViewModel= viewModel()) {
+    val messages by vm.messageList.observeAsState(mutableListOf())
     Scaffold(
         modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
@@ -166,7 +166,7 @@ fun Chat(navController: NavController) {
                 ChatInput() {
                     //TODO
                     //Get timestamp
-                    messages.add(it)
+                    vm.addMessage(it)
 
                 }
             }
