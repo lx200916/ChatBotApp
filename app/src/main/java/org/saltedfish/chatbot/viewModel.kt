@@ -38,12 +38,12 @@ class chatViewModel : ViewModel() {
     }
     fun initStatus(context: Context,modelType:Int){
         val modelPath = when(modelType){
-            0->"model/llama"
+            0->"model/llama2.mllm"
             1->"model/fuyu"
             else->"model/llama"
         }
         val vacabPath = when(modelType){
-            0->"model/llama_vocab.mllm"
+            0->"model/vocab.mllm"
             1->"model/fuyu_uni.mllm"
             else->"model/llama_vocab.mllm"
         }

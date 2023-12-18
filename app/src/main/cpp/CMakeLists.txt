@@ -28,6 +28,21 @@ LINK_DIRECTORIES(libs)
 add_library(${CMAKE_PROJECT_NAME} SHARED
     # List C/C++ source files with relative paths to this CMakeLists.txt.
     chatbot.cpp)
+find_package(OpenMP REQUIRED)
+if(OpenMP_FOUND)
+    message(STATUS "found openmp")
+    set(CMAKE_C_FLAGS ${CMAKE_C_FLAGS} ${OPENMP_C_FLAGS})
+    set(CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS} ${OPENMP_CXX_FLAGS})
+else()
+    message(FATAL_ERROR "openmp not found!")
+endif()
+if(OpenMP_FOUND)
+    message(STATUS "found openmp")
+    target_link_libraries(${CMAKE_PROJECT_NAME}
+
+            OpenMP::OpenMP_CXX )
+    #target_link_libraries (MLLM_CPU -static-openmp -fopenmp)
+endif()
 #target_link_libraries(${CMAKE_PROJECT_NAME}
 #    # List libraries link to the target library.
 #    # You can use both absolute or relative paths to specify a library.
@@ -44,4 +59,5 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
     # List libraries link to the target library
     android
         mllm_lib
+
     log)
