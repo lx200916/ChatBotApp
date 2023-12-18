@@ -15,3 +15,4 @@
 //         System.loadLibrary("chatbot")
 //      }
 //    }
+#include "LibHelper.hpp"
