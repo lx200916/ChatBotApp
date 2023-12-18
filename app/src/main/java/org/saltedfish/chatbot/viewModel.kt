@@ -1,5 +1,6 @@
 package org.saltedfish.chatbot
 
+import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -18,10 +19,41 @@ class chatViewModel : ViewModel() {
 //    fun setInputText(text: String) {
 //        _inputText.value = text
 //    }
+    init {
+        JNIBridge.setCallback { value, isStream ->
+            val message = Message(
+                value,
+                false,
+                0,
+                type = MessageType.TEXT,
+                isStreaming = isStream
+            )
+        }
+
+    }
     fun addMessage(message: Message) {
         message.id = _lastId++
         _messageList.value?.add(message)
         _messageList.value = _messageList.value
+    }
+    fun initStatus(context: Context,modelType:Int){
+        val modelPath = when(modelType){
+            0->"model/llama"
+            1->"model/fuyu"
+            else->"model/llama"
+        }
+        val vacabPath = when(modelType){
+            0->"model/llama_vocab.mllm"
+            1->"model/fuyu_uni.mllm"
+            else->"model/llama_vocab.mllm"
+        }
+        val result = JNIBridge.init(context.assets,modelType,modelPath,vacabPath)
+        if (result){
+            addMessage(Message("模型加载成功",false,0))
+        }else{
+            addMessage(Message("模型加载失败",false,0))
+        }
+
     }
     fun updateMessage(id:Int,content:String,isStreaming:Boolean=true){
         val index = _messageList.value?.indexOfFirst { it.id == id }?:-1
@@ -34,6 +66,7 @@ class chatViewModel : ViewModel() {
             _messageList.value = _messageList.value
         }
     }
+
 //    fun setAssetUri(uri: Uri?) {
 //        _assetUri.value = uri
 //    }

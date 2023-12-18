@@ -51,6 +51,7 @@ import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateListOf
@@ -145,6 +146,10 @@ fun Home(navController: NavController) {
 @Composable
 fun Chat(navController: NavController,vm:chatViewModel= viewModel()) {
     val messages by vm.messageList.observeAsState(mutableListOf())
+    val context = LocalContext.current
+    LaunchedEffect(key1 = Unit){
+        vm.initStatus(context,0)
+    }
     Scaffold(
         modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
@@ -284,7 +289,9 @@ fun ColumnScope.ChatBubble(message: Message){
                 painter = painter,
                 contentDescription = null,
                 contentScale = ContentScale.None,
-                modifier = Modifier.heightIn(min=60.dp,).widthIn(min=60.dp),
+                modifier = Modifier
+                    .heightIn(min = 60.dp,)
+                    .widthIn(min = 60.dp),
             )
         }
 
@@ -305,7 +312,8 @@ fun ColumnScope.ChatBubbleBox(isUser: Boolean,content: @Composable ()->Unit){
                 )
             )
             .background(MaterialTheme.colorScheme.primaryContainer)
-            .padding(16.dp).widthIn(max = 300.dp)
+            .padding(16.dp)
+            .widthIn(max = 300.dp)
     ) {
         content()
     }
