@@ -1,44 +1,89 @@
 package org.saltedfish.chatbot
 
 import android.content.Context
-import android.net.Uri
+import android.content.Intent
+import android.os.Build
+import android.os.Environment
+import android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+import android.util.Log
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class chatViewModel : ViewModel() {
 //    private var _inputText: MutableLiveData<String> = MutableLiveData<String>()
 //    val inputText: LiveData<String> = _inputText
-    private var _messageList: MutableLiveData<MutableList<Message>> = MutableLiveData<MutableList<Message>>(
-    mutableListOf()
+    private var _messageList: MutableLiveData<List<Message>> = MutableLiveData<List<Message>>(
+    listOf()
 )
     private var _lastId = 0;
-    val messageList: LiveData<MutableList<Message>> = _messageList
+    val messageList= _messageList
+    var _isExternalStorageManager = MutableLiveData<Boolean>(false)
+    var _isBusy = MutableLiveData<Boolean>(false)
+    val isBusy = _isBusy
+
 //    private var _assetUri = MutableLiveData<Uri?>(null)
 //    val assetUri = _assetUri
 //    fun setInputText(text: String) {
 //        _inputText.value = text
 //    }
     init {
-        JNIBridge.setCallback { value, isStream ->
-            val message = Message(
-                value,
-                false,
-                0,
-                type = MessageType.TEXT,
-                isStreaming = isStream
-            )
+        JNIBridge.setCallback { id,value, isStream ->
+//            val message = Message(
+//                value,
+//                false,
+//                0,
+//                type = MessageType.TEXT,
+//                isStreaming = isStream
+//            )
+            Log.i("chatViewModel","id:$id,value:$value,isStream:$isStream")
+            updateMessage(id,value,isStream)
+            if (!isStream){
+//                _isBusy.postValue(false)
+            }
+        }
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+        _isExternalStorageManager.value = Environment.isExternalStorageManager()
+
+        } else {
+            TODO("VERSION.SDK_INT < R")
         }
 
+
     }
-    fun addMessage(message: Message) {
-        message.id = _lastId++
-        _messageList.value?.add(message)
-        _messageList.value = _messageList.value
+    fun addMessage(message: Message,remote:Boolean=false) {
+        if (message.isUser){
+                message.id = _lastId++
+            }
+        val list = (_messageList.value?: listOf()).plus(message)
+
+        if (remote){
+            _messageList.postValue(list)
+        }
+        else{
+            _messageList.value = list
+
+        }
+    }
+    fun sendMessage(message: Message){
+        if (message.isUser){
+            addMessage(message)
+            val bot_message = Message("...",false,0)
+            bot_message.id = _lastId++
+            addMessage(bot_message)
+            _isBusy.value = true
+            CoroutineScope(Dispatchers.IO).launch {
+                JNIBridge.run(bot_message.id,message.text,100)
+            }
+        }
     }
     fun initStatus(context: Context,modelType:Int){
+        if (_isExternalStorageManager.value != true) return;
         val modelPath = when(modelType){
-            0->"model/llama2.mllm"
+            0->"model/llama_2.mllm"
             1->"model/fuyu"
             else->"model/llama"
         }
@@ -47,45 +92,39 @@ class chatViewModel : ViewModel() {
             1->"model/fuyu_uni.mllm"
             else->"model/llama_vocab.mllm"
         }
-        val result = JNIBridge.init(context.assets,modelType,modelPath,vacabPath)
-        if (result){
-            addMessage(Message("模型加载成功",false,0))
-        }else{
-            addMessage(Message("模型加载失败",false,0))
+        var downloadsPath = "/sdcard/Download/"
+        if (!downloadsPath.endsWith("/")){
+            downloadsPath = downloadsPath.plus("/")
         }
+        //list files of downloadsPath
+        val files = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.listFiles()
+        Log.i("chatViewModel","files:${files?.size}")
+        CoroutineScope(Dispatchers.IO).launch {
+            val result = JNIBridge.init( modelType, downloadsPath,modelPath, vacabPath)
+            if (result){
+                addMessage(Message("模型加载成功",false,0),true)
+            }else{
+                addMessage(Message("模型加载失败",false,0),true)
+            }
+        }
+
 
     }
     fun updateMessage(id:Int,content:String,isStreaming:Boolean=true){
         val index = _messageList.value?.indexOfFirst { it.id == id }?:-1
-        var message = _messageList.value?.get(index)
+        if (index == -1) {
+            Log.i("chatViewModel","updateMessage: index == -1")
+            return
+        }
+        val message = _messageList.value?.get(index)?.copy()
 
-        if (index != -1&&message!=null){
+        if (message!=null){
             message.text = content
             message.isStreaming= isStreaming
-            _messageList.value?.set(index,message)
-            _messageList.value = _messageList.value
+            val list = (_messageList.value?: mutableListOf()).toMutableList()
+            // change the item of immutable list
+            list[index] = message
+            _messageList.postValue(list.toList())
         }
     }
-
-//    fun setAssetUri(uri: Uri?) {
-//        _assetUri.value = uri
-//    }
-//    fun sendMessage() {
-//        val text = _inputText.value?:""
-//        val asset = _assetUri.value
-//        val message = Message(
-//            text,
-//            true,
-//            0,
-//            type = if (asset == null) MessageType.TEXT else MessageType.IMAGE,
-//            content = asset
-//
-//        )
-//        addMessage(message)
-//        setInputText("")
-//        setAssetUri(null)
-//    }
-
-
-
 }

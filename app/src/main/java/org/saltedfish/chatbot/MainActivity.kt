@@ -1,7 +1,10 @@
 package org.saltedfish.chatbot
 
+import android.content.Intent
 import android.net.Uri
 import android.os.Bundle
+import android.os.Environment
+import android.provider.Settings
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -54,7 +57,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -89,7 +91,15 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            if (!Environment.isExternalStorageManager()){
+                val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
+                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                JNIBridge.stop()
+                this.startActivity(intent)
+            }
 
+        }
         //enableEdgeToEdge()
         setContent {
             ChatBotTheme {
@@ -144,11 +154,27 @@ fun Home(navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun Chat(navController: NavController,vm:chatViewModel= viewModel()) {
+fun Chat(navController: NavController, vm: chatViewModel = viewModel()) {
     val messages by vm.messageList.observeAsState(mutableListOf())
     val context = LocalContext.current
-    LaunchedEffect(key1 = Unit){
-        vm.initStatus(context,0)
+    val isBusy by vm.isBusy.observeAsState(false)
+
+    val isExternalStorageManager = remember {
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            Environment.isExternalStorageManager()
+        } else {
+            true
+        }
+    }
+    if (!isExternalStorageManager) {
+        vm._isExternalStorageManager.value = false
+        // request permission with ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
+
+    } else {
+        vm._isExternalStorageManager.value = true
+        LaunchedEffect(key1 = vm._isExternalStorageManager.value) {
+            vm.initStatus(context, 0)
+        }
     }
     Scaffold(
         modifier = Modifier.imePadding(),
@@ -168,10 +194,10 @@ fun Chat(navController: NavController,vm:chatViewModel= viewModel()) {
             })
         }, bottomBar = {
             BottomAppBar() {
-                ChatInput() {
+                ChatInput(!isBusy) {
                     //TODO
                     //Get timestamp
-                    vm.addMessage(it)
+                    vm.sendMessage(it)
 
                 }
             }
@@ -210,7 +236,7 @@ fun Chat(navController: NavController,vm:chatViewModel= viewModel()) {
 
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun ChatInput(onMessageSend: (Message) -> Unit = {}) {
+fun ChatInput(enable:Boolean,onMessageSend: (Message) -> Unit = {}) {
     var text by remember { mutableStateOf("") }
     val result = remember { mutableStateOf<Uri?>(null) }
 //softkeyborad
@@ -237,6 +263,7 @@ fun ChatInput(onMessageSend: (Message) -> Unit = {}) {
         }
         Spacer(modifier = Modifier.width(4.dp))
         OutlinedTextField(
+            enabled = enable,
             value = text,
             onValueChange = { text = it },
             modifier = Modifier
@@ -251,6 +278,7 @@ fun ChatInput(onMessageSend: (Message) -> Unit = {}) {
         )
         IconButton(onClick = {
             keyboardController?.hide();
+
             onMessageSend(
                 Message(
                     text,
@@ -259,8 +287,8 @@ fun ChatInput(onMessageSend: (Message) -> Unit = {}) {
                     type = if (result.value == null) MessageType.TEXT else MessageType.IMAGE,
                     content = result.value
                 )
-            );text = "";result.value=null;
-        }) {
+            );text = "";result.value = null;
+        }, enabled = enable){
             Icon(
                 painter = painterResource(id = R.drawable.up),
                 contentDescription = "Send",
@@ -271,14 +299,15 @@ fun ChatInput(onMessageSend: (Message) -> Unit = {}) {
     }
 
 }
+
 @Composable
-fun ColumnScope.ChatBubble(message: Message){
+fun ColumnScope.ChatBubble(message: Message) {
     if (message.text.isNotEmpty()) ChatBubbleBox(isUser = message.isUser) {
         Text(text = message.text, fontSize = 18.sp)
     }
     if (message.type == MessageType.IMAGE) ChatBubbleBox(isUser = message.isUser) {
 
-        (message.content as Uri?)?.let { image->
+        (message.content as Uri?)?.let { image ->
             val painter = rememberAsyncImagePainter(
                 ImageRequest
                     .Builder(LocalContext.current)
@@ -290,15 +319,16 @@ fun ColumnScope.ChatBubble(message: Message){
                 contentDescription = null,
                 contentScale = ContentScale.None,
                 modifier = Modifier
-                    .heightIn(min = 60.dp,)
+                    .heightIn(min = 60.dp)
                     .widthIn(min = 60.dp),
             )
         }
 
     }
 }
+
 @Composable
-fun ColumnScope.ChatBubbleBox(isUser: Boolean,content: @Composable ()->Unit){
+fun ColumnScope.ChatBubbleBox(isUser: Boolean, content: @Composable () -> Unit) {
     Box(
         modifier = Modifier
             .padding(5.dp)
