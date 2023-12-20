@@ -172,7 +172,7 @@ fun Chat(navController: NavController, vm: chatViewModel = viewModel()) {
 
     } else {
         vm._isExternalStorageManager.value = true
-        LaunchedEffect(key1 = vm._isExternalStorageManager.value) {
+        LaunchedEffect(key1 = true) {
             vm.initStatus(context, 0)
         }
     }

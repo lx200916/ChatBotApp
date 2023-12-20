@@ -42,7 +42,7 @@ class chatViewModel : ViewModel() {
             Log.i("chatViewModel","id:$id,value:$value,isStream:$isStream")
             updateMessage(id,value,isStream)
             if (!isStream){
-//                _isBusy.postValue(false)
+                _isBusy.postValue(false)
             }
         }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
