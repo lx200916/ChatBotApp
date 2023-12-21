@@ -22,8 +22,10 @@ class chatViewModel : ViewModel() {
     private var _lastId = 0;
     val messageList= _messageList
     var _isExternalStorageManager = MutableLiveData<Boolean>(false)
-    var _isBusy = MutableLiveData<Boolean>(false)
+    var _isBusy = MutableLiveData<Boolean>(true)
     val isBusy = _isBusy
+    private var _modelType = MutableLiveData<Int>(0)
+    val modelType = _modelType
 
 //    private var _assetUri = MutableLiveData<Uri?>(null)
 //    val assetUri = _assetUri
@@ -47,7 +49,6 @@ class chatViewModel : ViewModel() {
         }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
         _isExternalStorageManager.value = Environment.isExternalStorageManager()
-
         } else {
             TODO("VERSION.SDK_INT < R")
         }
@@ -75,12 +76,14 @@ class chatViewModel : ViewModel() {
             bot_message.id = _lastId++
             addMessage(bot_message)
             _isBusy.value = true
+
             CoroutineScope(Dispatchers.IO).launch {
-                JNIBridge.run(bot_message.id,message.text,100)
+//                val run_text = "A dialog, where User interacts with AI. AI is helpful, kind, obedient, honest, and knows its own limits.\nUser: ${message.text}"
+                JNIBridge.run(bot_message.id,message.text,50)
             }
         }
     }
-    fun initStatus(context: Context,modelType:Int){
+    fun initStatus(context: Context,modelType:Int=_modelType.value?:0){
         if (_isExternalStorageManager.value != true) return;
         val modelPath = when(modelType){
             0->"model/llama_2.mllm"
@@ -103,6 +106,7 @@ class chatViewModel : ViewModel() {
             val result = JNIBridge.init( modelType, downloadsPath,modelPath, vacabPath)
             if (result){
                 addMessage(Message("模型加载成功",false,0),true)
+                _isBusy.postValue(false)
             }else{
                 addMessage(Message("模型加载失败",false,0),true)
             }

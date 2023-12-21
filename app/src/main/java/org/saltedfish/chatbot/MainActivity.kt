@@ -216,8 +216,8 @@ fun Chat(navController: NavController, vm: chatViewModel = viewModel()) {
                     .systemBarsPadding()
                     .verticalScroll(rememberScrollState())
             ) {
-                ChatBubble(message = Message("Hello", true, 0))
-                ChatBubble(message = Message("Hi,I am A ChatBot.What Can I do for you?", false, 0))
+//                ChatBubble(message = Message("Hello", true, 0))
+//                ChatBubble(message = Message("Hi,I am A ChatBot.What Can I do for you?", false, 0))
                 messages.forEach {
                     ChatBubble(message = it)
                 }

@@ -82,7 +82,7 @@ Java_org_saltedfish_chatbot_JNIBridge_run(JNIEnv *env, jobject thiz,jint id,jstr
 
     }));
     libHelper->setCallback(*callback);
-    const auto input_c = string(env->GetStringUTFChars(input, nullptr));
+    auto input_c = string(env->GetStringUTFChars(input, nullptr));
     libHelper->run(input_c, maxStep);
 }
 extern "C" JNIEXPORT void JNICALL

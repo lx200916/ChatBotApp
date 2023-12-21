@@ -16,6 +16,7 @@
 
 namespace mllm {
     class Tokenizer;
+    class PreProcessor;
 }
 
 struct Context;
@@ -47,11 +48,15 @@ namespace mllm {
         callback_t callback_ = [](std::string, bool) {
         };
         Tokenizer *tokenizer_ = nullptr;
-
+        PreProcessor *pre_processor_ = nullptr;
+        unsigned int eos_id_ = 2;
+        PreDefinedModel model_ = PreDefinedModel::LLAMA;
+        bool is_first_run_cond_ = true;
     public:
+        unsigned postProcessing(std::shared_ptr<Tensor> result, std::shared_ptr<Tensor> &out_result) const;
         bool setUp(const std::string &base_path, std::string weights_path, std::string vacab_path, PreDefinedModel model, MLLMBackendType backend_type = MLLMBackendType::CPU);
         void setCallback(callback_t callback);
-        void run(const std::string &input_str, unsigned int max_step) const;
+        void run( std::string &input_str, unsigned int max_step) ;
         ~LibHelper();
     };
 } // mllm
