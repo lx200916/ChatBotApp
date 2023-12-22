@@ -20,6 +20,7 @@ object JNIBridge {
     }
     external fun init(modelType:Int,basePath:String,modelPath:String,vacabPath:String):Boolean
     external fun run(id:Int,input:String,maxStep:Int)
+    external fun runImage(id:Int,image:ByteArray,text:String,maxStep:Int)
     external fun setCallback()
     external fun stop()
 }

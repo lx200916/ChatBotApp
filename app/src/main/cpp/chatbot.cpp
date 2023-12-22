@@ -64,6 +64,7 @@ Java_org_saltedfish_chatbot_JNIBridge_init(JNIEnv *env, jobject thiz,  jint mode
 //    auto fp = fopen(fpath,"rb");
 //    ftell(fp);
     if (libHelper!= nullptr) delete libHelper;
+
     libHelper = new LibHelper();
     if(!libHelper->setUp(base_path_c, weights_path_c, vacab_path_c,
                         static_cast<PreDefinedModel>(modelType))) return JNI_FALSE;
@@ -83,7 +84,25 @@ Java_org_saltedfish_chatbot_JNIBridge_run(JNIEnv *env, jobject thiz,jint id,jstr
     }));
     libHelper->setCallback(*callback);
     auto input_c = string(env->GetStringUTFChars(input, nullptr));
-    libHelper->run(input_c, maxStep);
+    libHelper->run(input_c, nullptr, maxStep,0);
+}
+extern "C" JNIEXPORT void JNICALL
+Java_org_saltedfish_chatbot_JNIBridge_runImage(JNIEnv* env, jobject obj, jint id, jbyteArray image, jstring text, jint maxStep) {
+    callback.reset(new callback_t([env,id](std::string str,bool isEnd){
+        try {
+            jstring jstr = charToJString(env, str);
+            env->CallVoidMethod(g_jniBridgeObject, g_callbackMethod,id, jstr, !isEnd);
+            env->DeleteLocalRef(jstr);
+        }catch (std::exception &e){
+            __android_log_print(ANDROID_LOG_ERROR,"MLLM","%s",e.what());
+        }
+
+    }));
+    libHelper->setCallback(*callback);
+    auto input_c = string(env->GetStringUTFChars(text, nullptr));
+    auto image_c = env->GetByteArrayElements(image, nullptr);
+    libHelper->run(input_c, (uint8_t *) image_c, maxStep,env->GetArrayLength(image));
+    env->ReleaseByteArrayElements(image, image_c, 0);
 }
 extern "C" JNIEXPORT void JNICALL
 Java_org_saltedfish_chatbot_JNIBridge_setCallback(JNIEnv *env, jobject thiz) {

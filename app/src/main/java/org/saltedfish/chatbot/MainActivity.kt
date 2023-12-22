@@ -108,9 +108,9 @@ class MainActivity : ComponentActivity() {
                     composable("home") { Home(navController) }
                     composable("chat/{id}?type={type}",
                         arguments = listOf(navArgument("id") { type = NavType.IntType },
-                            navArgument("type") { type = NavType.StringType;defaultValue = "text" }
+                            navArgument("type") { type = NavType.IntType;defaultValue = 0 }
                         )) {
-                        Chat(navController)
+                        Chat(navController,it.arguments?.getInt("type")?:0)
                     }
                     // A surface container using the 'background' color from the theme
 
@@ -154,10 +154,14 @@ fun Home(navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun Chat(navController: NavController, vm: chatViewModel = viewModel()) {
+fun Chat(navController: NavController,chatType:Int=0, vm: chatViewModel = viewModel()) {
+    LaunchedEffect(key1 = chatType) {
+        vm.setModelType(chatType)
+    }
     val messages by vm.messageList.observeAsState(mutableListOf())
     val context = LocalContext.current
     val isBusy by vm.isBusy.observeAsState(false)
+    val scrollState = rememberScrollState()
 
     val isExternalStorageManager = remember {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
@@ -173,8 +177,13 @@ fun Chat(navController: NavController, vm: chatViewModel = viewModel()) {
     } else {
         vm._isExternalStorageManager.value = true
         LaunchedEffect(key1 = true) {
-            vm.initStatus(context, 0)
+            vm.initStatus(context, chatType)
+            vm._scrollstate = scrollState
         }
+    }
+    LaunchedEffect(key1 = isBusy,  ){
+        scrollState.animateScrollTo(scrollState.maxValue)
+
     }
     Scaffold(
         modifier = Modifier.imePadding(),
@@ -197,7 +206,7 @@ fun Chat(navController: NavController, vm: chatViewModel = viewModel()) {
                 ChatInput(!isBusy) {
                     //TODO
                     //Get timestamp
-                    vm.sendMessage(it)
+                    vm.sendMessage(context,it)
 
                 }
             }
@@ -214,7 +223,7 @@ fun Chat(navController: NavController, vm: chatViewModel = viewModel()) {
                     .padding(it)
                     .consumeWindowInsets(it)
                     .systemBarsPadding()
-                    .verticalScroll(rememberScrollState())
+                    .verticalScroll(scrollState)
             ) {
 //                ChatBubble(message = Message("Hello", true, 0))
 //                ChatBubble(message = Message("Hi,I am A ChatBot.What Can I do for you?", false, 0))
@@ -278,7 +287,10 @@ fun ChatInput(enable:Boolean,onMessageSend: (Message) -> Unit = {}) {
         )
         IconButton(onClick = {
             keyboardController?.hide();
-
+            // if the last word of text is not a punctuation, add a period
+            // judge if the last word is a punctuation?
+            val punctuation = listOf('.', '?', '!', ',', ';', ':', '。', '？', '！', '，', '；', '：')
+            if (text.isNotEmpty() && !punctuation.contains(text.last())&& text.last() != '\n') text += ".";
             onMessageSend(
                 Message(
                     text,
@@ -384,14 +396,16 @@ fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController) 
                 backgoundColor = Color(0xEDADE6AA),
                 title = "Text Reader",
                 subtitle = "\" The meaning of life is ....\"",
-                onClick = { navController.navigate("chat/1?type=text") }
+                onClick = { navController.navigate("chat/1?type=0") }
             )
             Spacer(Modifier.width(8.dp))
             EntryCard(
                 icon = R.drawable.image,
                 backgoundColor = Purple80,
                 title = "Image Reader",
-                subtitle = "\" say..How many stars in the sky?\""
+                subtitle = "\" say..How many stars in the sky?\"",
+                        onClick = { navController.navigate("chat/1?type=1") }
+
             )
 
         }

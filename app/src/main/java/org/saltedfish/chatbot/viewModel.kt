@@ -2,13 +2,16 @@ package org.saltedfish.chatbot
 
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
 import android.util.Log
+import androidx.compose.foundation.ScrollState
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -19,6 +22,7 @@ class chatViewModel : ViewModel() {
     private var _messageList: MutableLiveData<List<Message>> = MutableLiveData<List<Message>>(
     listOf()
 )
+    var _scrollstate:ScrollState? = null
     private var _lastId = 0;
     val messageList= _messageList
     var _isExternalStorageManager = MutableLiveData<Boolean>(false)
@@ -26,6 +30,9 @@ class chatViewModel : ViewModel() {
     val isBusy = _isBusy
     private var _modelType = MutableLiveData<Int>(0)
     val modelType = _modelType
+    fun setModelType(type:Int){
+        _modelType.value = type
+    }
 
 //    private var _assetUri = MutableLiveData<Uri?>(null)
 //    val assetUri = _assetUri
@@ -42,7 +49,7 @@ class chatViewModel : ViewModel() {
 //                isStreaming = isStream
 //            )
             Log.i("chatViewModel","id:$id,value:$value,isStream:$isStream")
-            updateMessage(id,value,isStream)
+            updateMessage(id,value.trim().replace("|NEWLINE|","\n").replace("▁"," "),isStream)
             if (!isStream){
                 _isBusy.postValue(false)
             }
@@ -69,31 +76,44 @@ class chatViewModel : ViewModel() {
 
         }
     }
-    fun sendMessage(message: Message){
+    fun sendMessage(context:Context,message: Message){
         if (message.isUser){
             addMessage(message)
             val bot_message = Message("...",false,0)
             bot_message.id = _lastId++
             addMessage(bot_message)
             _isBusy.value = true
-
-            CoroutineScope(Dispatchers.IO).launch {
+            if (modelType.value ==0){
+                CoroutineScope(Dispatchers.IO).launch {
 //                val run_text = "A dialog, where User interacts with AI. AI is helpful, kind, obedient, honest, and knows its own limits.\nUser: ${message.text}"
-                JNIBridge.run(bot_message.id,message.text,50)
-            }
-        }
-    }
+                    JNIBridge.run(bot_message.id,message.text,100)
+                }
+            }else if (modelType.value ==1){
+                val image_content = if (message.type==MessageType.IMAGE){
+                   val uri =  message.content as Uri?
+                    val inputStream = uri?.let { context.contentResolver.openInputStream(it) }
+                    inputStream?.readBytes()?:byteArrayOf()
+                } else {
+                    byteArrayOf()
+                }
+
+                CoroutineScope(Dispatchers.IO).launch {
+                    JNIBridge.runImage(bot_message.id, image = image_content,message.text,100)
+                }
+
+        }}}
+
     fun initStatus(context: Context,modelType:Int=_modelType.value?:0){
         if (_isExternalStorageManager.value != true) return;
         val modelPath = when(modelType){
             0->"model/llama_2.mllm"
-            1->"model/fuyu"
+            1->"model/fuyu.mllm"
             else->"model/llama"
         }
         val vacabPath = when(modelType){
             0->"model/vocab.mllm"
-            1->"model/fuyu_uni.mllm"
-            else->"model/llama_vocab.mllm"
+            1->"model/vocab_uni.mllm"
+            else->"model/vocab.mllm"
         }
         var downloadsPath = "/sdcard/Download/"
         if (!downloadsPath.endsWith("/")){
