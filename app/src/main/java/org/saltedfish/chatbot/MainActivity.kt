@@ -31,6 +31,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.systemBarsPadding
 import androidx.compose.foundation.layout.width
@@ -38,6 +39,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
@@ -315,7 +317,9 @@ fun ChatInput(enable:Boolean,onMessageSend: (Message) -> Unit = {}) {
 @Composable
 fun ColumnScope.ChatBubble(message: Message) {
     if (message.text.isNotEmpty()) ChatBubbleBox(isUser = message.isUser) {
-        Text(text = message.text, fontSize = 18.sp)
+        SelectionContainer{
+            Text(text = message.text, fontSize = 18.sp)
+        }
     }
     if (message.type == MessageType.IMAGE) ChatBubbleBox(isUser = message.isUser) {
 
@@ -409,6 +413,28 @@ fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController) 
             )
 
         }
+        Spacer(Modifier.height(8.dp))
+        Row {
+            EntryCard(
+                icon = R.drawable.camera,
+                // Pick up a pink
+                backgoundColor = Color(0xEDF8BBD0),
+                title = "Take A Photo",
+                subtitle = "\" Show me the real world\"",
+                onClick = { navController.navigate("chat/1?type=0") }
+            )
+            Spacer(Modifier.width(8.dp))
+            EntryCard(
+                icon = R.drawable.more_text,
+                // pick a blue style
+                backgoundColor = Color(0xEDB3E5FC),
+                title = "Show Me More Features!",
+                subtitle = "",
+                onClick = {  }
+
+            )
+        }
+
     }
 
 }
@@ -453,10 +479,10 @@ fun RowScope.EntryCard(
             Spacer(modifier = Modifier.weight(1f))
             Row(
                 horizontalArrangement = Arrangement.End,
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth().requiredHeight(36.dp)
             ) {
 
-                Image(
+                Icon(
                     painter = painterResource(id = R.drawable.next),
                     contentDescription = "Icon Description",
                     modifier = Modifier
