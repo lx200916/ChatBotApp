@@ -2,6 +2,7 @@ package org.saltedfish.chatbot
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -15,6 +16,7 @@ import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.io.ByteArrayOutputStream
 
 class chatViewModel : ViewModel() {
 //    private var _inputText: MutableLiveData<String> = MutableLiveData<String>()
@@ -97,7 +99,7 @@ class chatViewModel : ViewModel() {
                     byteArrayOf()
                 }
 
-                CoroutineScope(Dispatchers.IO).launch {
+                viewModelScope.launch(Dispatchers.IO)  {
                     JNIBridge.runImage(bot_message.id, image = image_content,message.text,100)
                 }
 
@@ -122,7 +124,7 @@ class chatViewModel : ViewModel() {
         //list files of downloadsPath
         val files = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.listFiles()
         Log.i("chatViewModel","files:${files?.size}")
-        CoroutineScope(Dispatchers.IO).launch {
+        viewModelScope.launch(Dispatchers.IO)  {
             val result = JNIBridge.init( modelType, downloadsPath,modelPath, vacabPath)
             if (result){
                 addMessage(Message("模型加载成功",false,0),true)
@@ -150,5 +152,59 @@ class chatViewModel : ViewModel() {
             list[index] = message
             _messageList.postValue(list.toList())
         }
+    }
+}
+
+class PhotoViewModel : ViewModel() {
+    private var _message: MutableLiveData<Message> = MutableLiveData<Message>()
+    val message = _message
+    var _bitmap = MutableLiveData<Bitmap>()
+    var result_:Boolean = false
+
+    private fun updateMessageText(message:String){
+        val msg = _message.value?.copy()?: Message("...",false,0)
+        msg.text = message
+        _message.postValue(msg)
+    }
+    fun setBitmap(bitmap: Bitmap){
+        _bitmap.value = bitmap
+        if (result_&&message.value==null){
+            sendMessage("Describe this photo.",bitmap)
+        }
+
+    }
+    init {
+        JNIBridge.setCallback { id,value, isStream ->
+            Log.i("PhotoViewModel","id:$id,value:$value,isStream:$isStream")
+            updateMessageText(value.trim().replace("|NEWLINE|","\n").replace("▁"," "))
+        }
+        initStatus()
+    }
+    fun initStatus(){
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val result =JNIBridge.init(1,"/sdcard/Download/","model/fuyu.mllm","model/vocab_uni.mllm")
+            result_ = result
+            if (result&&message.value==null&&_bitmap.value!=null){
+                sendMessage("Describe this photo.",_bitmap.value!!)
+            }
+            else if (!result){
+                updateMessageText("模型加载失败")
+            }
+        }
+    }
+    fun sendMessage(message: String,bitmap: Bitmap){
+        val msg = Message("...",false,0,)
+        _message.postValue(msg)
+        viewModelScope.launch(Dispatchers.IO)  {
+            JNIBridge.runImage(msg.id,bitmap2Bytes(bitmap),message,100)
+        }
+
+    }
+
+    private fun bitmap2Bytes(bitmap: Bitmap): ByteArray {
+        val byteArrayOutputStream = ByteArrayOutputStream()
+        bitmap.compress(Bitmap.CompressFormat.PNG, 80, byteArrayOutputStream)
+        return byteArrayOutputStream.toByteArray()
     }
 }

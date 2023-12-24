@@ -1,6 +1,7 @@
 package org.saltedfish.chatbot
 
 import android.content.Intent
+import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -67,6 +68,7 @@ import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -114,6 +116,9 @@ class MainActivity : ComponentActivity() {
                         )) {
                         Chat(navController,it.arguments?.getInt("type")?:0)
                     }
+                    composable("photo",){
+                        Photo(navController)
+                    }
                     // A surface container using the 'background' color from the theme
 
 
@@ -122,7 +127,80 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun Photo(navController: NavController,viewModel: PhotoViewModel=viewModel()){
+    val bitmap = remember { mutableStateOf<Bitmap?>(null) }
+    val message by viewModel.message.observeAsState()
+    val resultContracts = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) {
+        // Handle the returned Uri
+        it?.let {
+            bitmap.value = it
+            viewModel.setBitmap(it)
+        }
+        if (it==null){
+            navController.popBackStack()
+        }
+    }
+    LaunchedEffect(key1 = bitmap, ){
+        if (bitmap.value==null){
+            resultContracts.launch(null)
+        }
+    }
+    Scaffold(
+        modifier = Modifier.imePadding(),
+        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+        topBar = {
+            CenterAlignedTopAppBar(title = {
+                Text(
+                    text = "Photo",
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 24.sp
+                )
+            }, navigationIcon = {
+                IconButton(onClick = { navController.popBackStack() }) {
+                    Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
+                }
+            })
+        },
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxHeight()
 
+        ) {
+            Column(
+                Modifier
+                    .fillMaxSize()
+                    .padding(it)
+                    .consumeWindowInsets(it)
+                    .systemBarsPadding().padding(top = 16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                bitmap.value?.let {
+                    // round corner
+                    Image(
+                        bitmap = it.asImageBitmap(),
+                        contentDescription = null,
+                        contentScale = ContentScale.FillHeight,
+                        // make the image height of 1/3
+                        modifier = Modifier
+                            .fillMaxHeight(0.3f)
+                            .heightIn(min = 60.dp)
+                            .widthIn(min = 60.dp)
+                            .clip(RoundedCornerShape(20.dp))
+                    )
+                }
+                Spacer(modifier = Modifier.height(16.dp))
+                ChatBubble(message = Message("👆🏻 What's this?", true, 0))
+                message?.let {
+                    ChatBubble(message = it)
+                }
+
+
+
+}}}}
 @Composable
 fun Home(navController: NavController) {
     Scaffold(
@@ -421,7 +499,7 @@ fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController) 
                 backgoundColor = Color(0xEDF8BBD0),
                 title = "Take A Photo",
                 subtitle = "\" Show me the real world\"",
-                onClick = { navController.navigate("chat/1?type=0") }
+                onClick = { navController.navigate("photo") }
             )
             Spacer(Modifier.width(8.dp))
             EntryCard(
@@ -479,7 +557,9 @@ fun RowScope.EntryCard(
             Spacer(modifier = Modifier.weight(1f))
             Row(
                 horizontalArrangement = Arrangement.End,
-                modifier = Modifier.fillMaxWidth().requiredHeight(36.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .requiredHeight(36.dp)
             ) {
 
                 Icon(
