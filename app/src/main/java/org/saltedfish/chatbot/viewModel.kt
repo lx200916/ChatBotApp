@@ -9,21 +9,33 @@ import android.os.Environment
 import android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
 import android.util.Log
 import androidx.compose.foundation.ScrollState
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import coil.request.ImageRequest
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.io.ByteArrayOutputStream
-
+data class Photo(
+    var id :Int=0,
+    val uri: Uri,
+    val request: ImageRequest?
+)
 class chatViewModel : ViewModel() {
 //    private var _inputText: MutableLiveData<String> = MutableLiveData<String>()
 //    val inputText: LiveData<String> = _inputText
     private var _messageList: MutableLiveData<List<Message>> = MutableLiveData<List<Message>>(
     listOf()
 )
+    private var _photoList: MutableLiveData<List<Photo>> = MutableLiveData<List<Photo>>(
+        listOf()
+    )
+    val photoList = _photoList
+    private var _previewUri: MutableLiveData<Uri?> = MutableLiveData<Uri?>(null)
+    val previewUri = _previewUri
     var _scrollstate:ScrollState? = null
     private var _lastId = 0;
     val messageList= _messageList
@@ -34,6 +46,15 @@ class chatViewModel : ViewModel() {
     val modelType = _modelType
     fun setModelType(type:Int){
         _modelType.value = type
+    }
+    fun setPreviewUri(uri: Uri?){
+        _previewUri.value = uri
+    }
+    fun addPhoto(photo: Photo):Int{
+        photo.id = _photoList.value?.size?:0
+        val list = (_photoList.value?: listOf()).plus(photo)
+        _photoList.postValue(list)
+        return photo.id
     }
 
 //    private var _assetUri = MutableLiveData<Uri?>(null)
@@ -127,10 +148,10 @@ class chatViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO)  {
             val result = JNIBridge.init( modelType, downloadsPath,modelPath, vacabPath)
             if (result){
-                addMessage(Message("模型加载成功",false,0),true)
+                addMessage(Message("Model Loaded!",false,0),true)
                 _isBusy.postValue(false)
             }else{
-                addMessage(Message("模型加载失败",false,0),true)
+                addMessage(Message("Fail To Load Models.",false,0),true)
             }
         }
 
@@ -189,7 +210,7 @@ class PhotoViewModel : ViewModel() {
                 sendMessage("Describe this photo.",_bitmap.value!!)
             }
             else if (!result){
-                updateMessageText("模型加载失败")
+                updateMessageText("Fail to Load Models.")
             }
         }
     }

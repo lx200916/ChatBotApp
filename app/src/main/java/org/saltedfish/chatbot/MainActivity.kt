@@ -14,8 +14,10 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -39,6 +41,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
@@ -62,21 +65,32 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -88,6 +102,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.origeek.imageViewer.previewer.ImagePreviewer
+import com.origeek.imageViewer.previewer.ImagePreviewerState
+import com.origeek.imageViewer.previewer.rememberPreviewerState
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import org.saltedfish.chatbot.ui.theme.ChatBotTheme
 import org.saltedfish.chatbot.ui.theme.Purple80
 
@@ -96,7 +115,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
-            if (!Environment.isExternalStorageManager()){
+            if (!Environment.isExternalStorageManager()) {
                 val intent = Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION)
                 intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
                 JNIBridge.stop()
@@ -110,13 +129,14 @@ class MainActivity : ComponentActivity() {
                 val navController = rememberNavController()
                 NavHost(navController = navController, startDestination = "home") {
                     composable("home") { Home(navController) }
-                    composable("chat/{id}?type={type}",
+                    composable(
+                        "chat/{id}?type={type}",
                         arguments = listOf(navArgument("id") { type = NavType.IntType },
-                            navArgument("type") { type = NavType.IntType;defaultValue = 0 }
-                        )) {
-                        Chat(navController,it.arguments?.getInt("type")?:0)
+                            navArgument("type") { type = NavType.IntType;defaultValue = 0 })
+                    ) {
+                        Chat(navController, it.arguments?.getInt("type") ?: 0)
                     }
-                    composable("photo",){
+                    composable("photo") {
                         Photo(navController)
                     }
                     // A surface container using the 'background' color from the theme
@@ -127,23 +147,26 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun Photo(navController: NavController,viewModel: PhotoViewModel=viewModel()){
+fun Photo(navController: NavController, viewModel: PhotoViewModel = viewModel()) {
     val bitmap = remember { mutableStateOf<Bitmap?>(null) }
     val message by viewModel.message.observeAsState()
-    val resultContracts = rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) {
-        // Handle the returned Uri
-        it?.let {
-            bitmap.value = it
-            viewModel.setBitmap(it)
+
+    val resultContracts =
+        rememberLauncherForActivityResult(ActivityResultContracts.TakePicturePreview()) {
+            // Handle the returned Uri
+            it?.let {
+                bitmap.value = it
+                viewModel.setBitmap(it)
+            }
+            if (it == null) {
+                navController.popBackStack()
+            }
         }
-        if (it==null){
-            navController.popBackStack()
-        }
-    }
-    LaunchedEffect(key1 = bitmap, ){
-        if (bitmap.value==null){
+    LaunchedEffect(key1 = bitmap) {
+        if (bitmap.value == null) {
             resultContracts.launch(null)
         }
     }
@@ -154,9 +177,7 @@ fun Photo(navController: NavController,viewModel: PhotoViewModel=viewModel()){
         topBar = {
             CenterAlignedTopAppBar(title = {
                 Text(
-                    text = "Photo",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp
+                    text = "Photo", fontWeight = FontWeight.Bold, fontSize = 24.sp
                 )
             }, navigationIcon = {
                 IconButton(onClick = { navController.popBackStack() }) {
@@ -166,8 +187,7 @@ fun Photo(navController: NavController,viewModel: PhotoViewModel=viewModel()){
         },
     ) {
         Column(
-            modifier = Modifier
-                .fillMaxHeight()
+            modifier = Modifier.fillMaxHeight()
 
         ) {
             Column(
@@ -175,8 +195,8 @@ fun Photo(navController: NavController,viewModel: PhotoViewModel=viewModel()){
                     .fillMaxSize()
                     .padding(it)
                     .consumeWindowInsets(it)
-                    .systemBarsPadding().padding(top = 16.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+                    .systemBarsPadding()
+                    .padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 bitmap.value?.let {
                     // round corner
@@ -199,8 +219,11 @@ fun Photo(navController: NavController,viewModel: PhotoViewModel=viewModel()){
                 }
 
 
+            }
+        }
+    }
+}
 
-}}}}
 @Composable
 fun Home(navController: NavController) {
     Scaffold(
@@ -211,8 +234,7 @@ fun Home(navController: NavController) {
         },
     ) {
         Column(
-            modifier = Modifier
-                .padding(it)
+            modifier = Modifier.padding(it)
 
         ) {
             MainEntryCards(navController = navController)
@@ -234,15 +256,18 @@ fun Home(navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun Chat(navController: NavController,chatType:Int=0, vm: chatViewModel = viewModel()) {
+fun Chat(navController: NavController, chatType: Int = 0, vm: chatViewModel = viewModel()) {
     LaunchedEffect(key1 = chatType) {
         vm.setModelType(chatType)
     }
+    val previewUri by vm.previewUri.observeAsState()
     val messages by vm.messageList.observeAsState(mutableListOf())
     val context = LocalContext.current
     val isBusy by vm.isBusy.observeAsState(false)
     val scrollState = rememberScrollState()
-
+    val scope = rememberCoroutineScope()
+    val photoList by vm.photoList.observeAsState(listOf())
+    val imageViewerState = rememberPreviewerState(pageCount = { photoList.size })
     val isExternalStorageManager = remember {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             Environment.isExternalStorageManager()
@@ -261,40 +286,37 @@ fun Chat(navController: NavController,chatType:Int=0, vm: chatViewModel = viewMo
             vm._scrollstate = scrollState
         }
     }
-    LaunchedEffect(key1 = isBusy,  ){
+    LaunchedEffect(key1 = isBusy) {
         scrollState.animateScrollTo(scrollState.maxValue)
 
     }
-    Scaffold(
-        modifier = Modifier.imePadding(),
+    Scaffold(modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
-            CenterAlignedTopAppBar(title = {
+            if (imageViewerState.visible) null else CenterAlignedTopAppBar(title = {
                 Text(
-                    text = "Chat",
-                    fontWeight = FontWeight.Bold,
-                    fontSize = 24.sp
+                    text = "Chat", fontWeight = FontWeight.Bold, fontSize = 24.sp
                 )
             }, navigationIcon = {
                 IconButton(onClick = { navController.popBackStack() }) {
                     Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
                 }
             })
-        }, bottomBar = {
-            BottomAppBar() {
-                ChatInput(!isBusy) {
+        },
+        bottomBar = {
+            if (imageViewerState.visible) null else BottomAppBar {
+                ChatInput(!isBusy, vm) {
                     //TODO
                     //Get timestamp
-                    vm.sendMessage(context,it)
+                    vm.sendMessage(context, it)
 
                 }
             }
-        }
-    ) {
+        }) {
+
         Column(
-            modifier = Modifier
-                .fillMaxHeight()
+            modifier = Modifier.fillMaxHeight()
 
         ) {
             Column(
@@ -308,7 +330,7 @@ fun Chat(navController: NavController,chatType:Int=0, vm: chatViewModel = viewMo
 //                ChatBubble(message = Message("Hello", true, 0))
 //                ChatBubble(message = Message("Hi,I am A ChatBot.What Can I do for you?", false, 0))
                 messages.forEach {
-                    ChatBubble(message = it)
+                    ChatBubble(message = it, vm, scope, imageViewerState)
                 }
 //                Spacer(
 //                    modifier = Modifier
@@ -319,21 +341,137 @@ fun Chat(navController: NavController,chatType:Int=0, vm: chatViewModel = viewMo
 
 
         }
+        if (previewUri != null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(it)
+                    .consumeWindowInsets(it)
+                    .systemBarsPadding()
+                    .background(Color.Transparent)
+            ) {
+                PreviewBubble(previewUri!!)
+
+            }
+        }
+        ImagePreviewer(state = imageViewerState, imageLoader = { pageIndex ->
+            rememberAsyncImagePainter(
+                ImageRequest.Builder(LocalContext.current).data(data = photoList[pageIndex].uri)
+                    .size(coil.size.Size.ORIGINAL).build()
+            )
+        }, detectGesture = {
+            onTap = {
+                scope.launch {
+                    imageViewerState.close()
+                }
+            }
+        })
     }
 
 }
 
+fun getBubbleShape(
+    density: Density,
+    cornerRadius: Dp,
+    arrowWidth: Dp,
+    arrowHeight: Dp,
+    arrowOffset: Dp
+): GenericShape {
+
+    val cornerRadiusPx: Float
+    val arrowWidthPx: Float
+    val arrowHeightPx: Float
+    val arrowOffsetPx: Float
+
+    with(density) {
+        cornerRadiusPx = cornerRadius.toPx()
+        arrowWidthPx = arrowWidth.toPx()
+        arrowHeightPx = arrowHeight.toPx()
+        arrowOffsetPx = arrowOffset.toPx()
+    }
+
+    return GenericShape { size: Size, layoutDirection: LayoutDirection ->
+
+        this.addRoundRect(
+            RoundRect(
+                rect = Rect(
+                    offset = Offset(0f, 0f),
+                    size = Size(size.width, size.height - arrowHeightPx)
+                ),
+                cornerRadius = CornerRadius(cornerRadiusPx, cornerRadiusPx)
+            )
+        )
+        moveTo(arrowOffsetPx, size.height - arrowHeightPx)
+        lineTo(arrowOffsetPx + arrowWidthPx / 2, size.height)
+        lineTo(arrowOffsetPx + arrowWidthPx, size.height - arrowHeightPx)
+
+    }
+}
+
+@Composable
+fun BoxScope.PreviewBubble(preview: Uri) {
+    val density = LocalDensity.current
+    val arrowHeight = 16.dp
+
+    val bubbleShape = remember {
+        getBubbleShape(
+            density = density,
+            cornerRadius = 12.dp,
+            arrowWidth = 20.dp,
+            arrowHeight = arrowHeight,
+            arrowOffset = 30.dp
+        )
+    }
+    Box(
+        // Positioned in the bottom left corner,above on BottomBar
+        //get screen height
+
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .shadow(10.dp, bubbleShape)
+            .padding(start = 5.dp)
+//            .heightIn(min = 100.dp)
+            .fillMaxWidth(0.2f)
+//            .clip(RoundedCornerShape(10.dp))
+            .background(MaterialTheme.colorScheme.primaryContainer)
+//            .border(
+//                width = 1.dp,
+//                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
+//                shape = RoundedCornerShape(10.dp)
+//            )
+    ) {
+        Image(
+            painter = rememberAsyncImagePainter(
+                ImageRequest.Builder(LocalContext.current).data(data = preview)
+                    .size(coil.size.Size.ORIGINAL).build()
+            ),
+            contentDescription = "Image Description",
+            contentScale = ContentScale.FillWidth,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = arrowHeight)
+                .clip(RoundedCornerShape(10.dp))
+        )
+
+    }
+}
+
 @OptIn(ExperimentalComposeUiApi::class)
 @Composable
-fun ChatInput(enable:Boolean,onMessageSend: (Message) -> Unit = {}) {
+fun ChatInput(
+    enable: Boolean,
+    vm: chatViewModel = viewModel(),
+    onMessageSend: (Message) -> Unit = {}
+) {
     var text by remember { mutableStateOf("") }
-    val result = remember { mutableStateOf<Uri?>(null) }
+    val result by vm.previewUri.observeAsState()
 //softkeyborad
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) {
-        result.value = it
+        vm.setPreviewUri(it)
     }
+
 
     Row(
         verticalAlignment = Alignment.CenterVertically,
@@ -345,7 +483,7 @@ fun ChatInput(enable:Boolean,onMessageSend: (Message) -> Unit = {}) {
             )
         }, Modifier.padding(10.dp)) {
             Image(
-                painter = painterResource(id = if (result.value != null) R.drawable.add_done else R.drawable.add_other),
+                painter = painterResource(id = if (result != null) R.drawable.add_done else R.drawable.add_other),
                 contentDescription = "Add Other Resources.",
                 Modifier.size(32.dp)
             )
@@ -366,21 +504,21 @@ fun ChatInput(enable:Boolean,onMessageSend: (Message) -> Unit = {}) {
 
         )
         IconButton(onClick = {
-            keyboardController?.hide();
+            keyboardController?.hide()
             // if the last word of text is not a punctuation, add a period
             // judge if the last word is a punctuation?
             val punctuation = listOf('.', '?', '!', ',', ';', ':', '。', '？', '！', '，', '；', '：')
-            if (text.isNotEmpty() && !punctuation.contains(text.last())&& text.last() != '\n') text += ".";
+            if (text.isNotEmpty() && !punctuation.contains(text.last()) && text.last() != '\n') text += "."
             onMessageSend(
                 Message(
                     text,
                     true,
                     0,
-                    type = if (result.value == null) MessageType.TEXT else MessageType.IMAGE,
-                    content = result.value
+                    type = if (result == null) MessageType.TEXT else MessageType.IMAGE,
+                    content = result
                 )
-            );text = "";result.value = null;
-        }, enabled = enable){
+            );text = "";vm.setPreviewUri(null)
+        }, enabled = enable) {
             Icon(
                 painter = painterResource(id = R.drawable.up),
                 contentDescription = "Send",
@@ -393,29 +531,44 @@ fun ChatInput(enable:Boolean,onMessageSend: (Message) -> Unit = {}) {
 }
 
 @Composable
-fun ColumnScope.ChatBubble(message: Message) {
+fun ColumnScope.ChatBubble(
+    message: Message,
+    vm: chatViewModel? = null,
+    scope: CoroutineScope = rememberCoroutineScope(),
+    imageViewerState: ImagePreviewerState = rememberPreviewerState(pageCount = { 1 })
+) {
     if (message.text.isNotEmpty()) ChatBubbleBox(isUser = message.isUser) {
-        SelectionContainer{
+        SelectionContainer {
             Text(text = message.text, fontSize = 18.sp)
         }
     }
-    if (message.type == MessageType.IMAGE) ChatBubbleBox(isUser = message.isUser) {
+    if (message.type == MessageType.IMAGE && vm != null) ChatBubbleBox(isUser = message.isUser) {
 
         (message.content as Uri?)?.let { image ->
-            val painter = rememberAsyncImagePainter(
-                ImageRequest
-                    .Builder(LocalContext.current)
-                    .data(data = image)
-                    .build()
-            )
-            Image(
-                painter = painter,
-                contentDescription = null,
-                contentScale = ContentScale.None,
+            val photo = vm.photoList.value!!.find { it.uri == image }
+            val (painter, id) = if (photo == null) {
+                val requests = ImageRequest.Builder(LocalContext.current).data(data = image).build()
+                val painter_ = rememberAsyncImagePainter(
+                    requests
+                )
+                val photo_ = Photo(uri = image, request = requests)
+                val id = vm.addPhoto(photo_)
+                painter_ to id
+            } else {
+                rememberAsyncImagePainter(photo.request) to photo.id
+            }
+            Image(painter = painter,
+                contentDescription = "Image Description",
                 modifier = Modifier
-                    .heightIn(min = 60.dp)
-                    .widthIn(min = 60.dp),
-            )
+                    .clickable {
+                        scope.launch {
+                            //TODO:Index?
+                            imageViewerState.open(id)
+                        }
+                    }
+                    .size(200.dp)
+                    .clip(RoundedCornerShape(20.dp)))
+
         }
 
     }
@@ -448,7 +601,8 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier.padding(top = 64.dp, start = 20.dp)) {
         Text(
             text = "Let's Chat",
-            fontWeight = FontWeight.Bold, fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            fontSize = 32.sp,
             lineHeight = 30.sp,
             color = MaterialTheme.colorScheme.onPrimaryContainer
 //            style = MaterialTheme.typography.headlineSmall.copy( lineHeightStyle = LineHeightStyle(alignment = LineHeightStyle.Alignment.Bottom, trim = LineHeightStyle.Trim.Both )),
@@ -466,6 +620,7 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController) {
+    val context = LocalContext.current
     Column(
         Modifier
             .padding(8.dp)
@@ -473,42 +628,41 @@ fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController) 
     ) {
 
         Row {
-            EntryCard(
-                icon = R.drawable.text,
+            EntryCard(icon = R.drawable.text,
                 backgoundColor = Color(0xEDADE6AA),
                 title = "Text Reader",
                 subtitle = "\" The meaning of life is ....\"",
-                onClick = { navController.navigate("chat/1?type=0") }
-            )
+                onClick = { navController.navigate("chat/1?type=0") })
             Spacer(Modifier.width(8.dp))
-            EntryCard(
-                icon = R.drawable.image,
+            EntryCard(icon = R.drawable.image,
                 backgoundColor = Purple80,
                 title = "Image Reader",
                 subtitle = "\" say..How many stars in the sky?\"",
-                        onClick = { navController.navigate("chat/1?type=1") }
+                onClick = { navController.navigate("chat/1?type=1") }
 
             )
 
         }
         Spacer(Modifier.height(8.dp))
         Row {
-            EntryCard(
-                icon = R.drawable.camera,
+            EntryCard(icon = R.drawable.camera,
                 // Pick up a pink
                 backgoundColor = Color(0xEDF8BBD0),
                 title = "Take A Photo",
                 subtitle = "\" Show me the real world\"",
-                onClick = { navController.navigate("photo") }
-            )
+                onClick = { navController.navigate("photo") })
             Spacer(Modifier.width(8.dp))
-            EntryCard(
-                icon = R.drawable.more_text,
+            EntryCard(icon = R.drawable.more_text,
                 // pick a blue style
                 backgoundColor = Color(0xEDB3E5FC),
                 title = "Show Me More Features!",
                 subtitle = "",
-                onClick = {  }
+                onClick = {
+                    // visit Github!
+                    val intent = Intent(Intent.ACTION_VIEW)
+                    intent.data = Uri.parse("https://github.com/UbiquitousLearning/mllm")
+                    context.startActivity(intent)
+                }
 
             )
         }
@@ -599,7 +753,9 @@ fun HistoryItem(icon: Int, text: String, modifier: Modifier = Modifier) {
     Card(
         modifier = modifier
             .padding(top = 5.dp)
-            .fillMaxWidth(), shape = RoundedCornerShape(15), colors = CardDefaults.cardColors(
+            .fillMaxWidth(),
+        shape = RoundedCornerShape(15),
+        colors = CardDefaults.cardColors(
             containerColor = Color.White
         )
     ) {
