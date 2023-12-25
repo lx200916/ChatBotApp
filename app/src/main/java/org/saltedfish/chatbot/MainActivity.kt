@@ -411,12 +411,12 @@ fun getBubbleShape(
 @Composable
 fun BoxScope.PreviewBubble(preview: Uri) {
     val density = LocalDensity.current
-    val arrowHeight = 16.dp
+    val arrowHeight = 8.dp
 
     val bubbleShape = remember {
         getBubbleShape(
             density = density,
-            cornerRadius = 12.dp,
+            cornerRadius = 10.dp,
             arrowWidth = 20.dp,
             arrowHeight = arrowHeight,
             arrowOffset = 30.dp
