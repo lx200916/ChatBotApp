@@ -75,6 +75,7 @@ dependencies {
     implementation 'androidx.compose.material3:material3'
     implementation "androidx.navigation:navigation-compose:2.7.6"
     implementation 'com.github.jvziyaoyao:ImageViewer:1.0.2-alpha.8'
+    implementation 'com.github.commandiron:ComposeLoading:1.0.4'
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'

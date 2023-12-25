@@ -1,16 +1,12 @@
 package org.saltedfish.chatbot
 
 import android.content.Context
-import android.content.Intent
 import android.graphics.Bitmap
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
-import android.provider.Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION
 import android.util.Log
 import androidx.compose.foundation.ScrollState
-import androidx.compose.ui.graphics.painter.Painter
-import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -24,7 +20,7 @@ data class Photo(
     val uri: Uri,
     val request: ImageRequest?
 )
-class chatViewModel : ViewModel() {
+class ChatViewModel : ViewModel() {
 //    private var _inputText: MutableLiveData<String> = MutableLiveData<String>()
 //    val inputText: LiveData<String> = _inputText
     private var _messageList: MutableLiveData<List<Message>> = MutableLiveData<List<Message>>(
@@ -42,6 +38,8 @@ class chatViewModel : ViewModel() {
     var _isExternalStorageManager = MutableLiveData<Boolean>(false)
     var _isBusy = MutableLiveData<Boolean>(true)
     val isBusy = _isBusy
+    val _isLoading = MutableLiveData<Boolean>(true)
+    val isLoading = _isLoading
     private var _modelType = MutableLiveData<Int>(0)
     val modelType = _modelType
     fun setModelType(type:Int){
@@ -148,10 +146,11 @@ class chatViewModel : ViewModel() {
         viewModelScope.launch(Dispatchers.IO)  {
             val result = JNIBridge.init( modelType, downloadsPath,modelPath, vacabPath)
             if (result){
-                addMessage(Message("Model Loaded!",false,0),true)
+//                addMessage(Message("Model Loaded!",false,0),true)
+                _isLoading.postValue(false)
                 _isBusy.postValue(false)
             }else{
-                addMessage(Message("Fail To Load Models.",false,0),true)
+                addMessage(Message("Fail To Load Models! Please Check if models exists at /sdcard/Download/model and restart app.",false,0),true)
             }
         }
 

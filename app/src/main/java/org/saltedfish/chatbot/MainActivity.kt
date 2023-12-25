@@ -102,6 +102,7 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import coil.compose.rememberAsyncImagePainter
 import coil.request.ImageRequest
+import com.commandiron.compose_loading.Wave
 import com.origeek.imageViewer.previewer.ImagePreviewer
 import com.origeek.imageViewer.previewer.ImagePreviewerState
 import com.origeek.imageViewer.previewer.rememberPreviewerState
@@ -256,7 +257,7 @@ fun Home(navController: NavController) {
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun Chat(navController: NavController, chatType: Int = 0, vm: chatViewModel = viewModel()) {
+fun Chat(navController: NavController, chatType: Int = 0, vm: ChatViewModel = viewModel()) {
     LaunchedEffect(key1 = chatType) {
         vm.setModelType(chatType)
     }
@@ -264,10 +265,12 @@ fun Chat(navController: NavController, chatType: Int = 0, vm: chatViewModel = vi
     val messages by vm.messageList.observeAsState(mutableListOf())
     val context = LocalContext.current
     val isBusy by vm.isBusy.observeAsState(false)
+    val isLoading by vm.isLoading.observeAsState(true)
     val scrollState = rememberScrollState()
     val scope = rememberCoroutineScope()
     val photoList by vm.photoList.observeAsState(listOf())
     val imageViewerState = rememberPreviewerState(pageCount = { photoList.size })
+    val modelType by vm.modelType.observeAsState(0)
     val isExternalStorageManager = remember {
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
             Environment.isExternalStorageManager()
@@ -305,8 +308,11 @@ fun Chat(navController: NavController, chatType: Int = 0, vm: chatViewModel = vi
             })
         },
         bottomBar = {
-            if (imageViewerState.visible) null else BottomAppBar {
-                ChatInput(!isBusy, vm) {
+            if (imageViewerState.visible|| isLoading) null else BottomAppBar {
+                ChatInput(!isBusy, withImage = modelType==1, onImageSelected = {
+                    vm.setPreviewUri(it)
+                }
+                ) {
                     //TODO
                     //Get timestamp
                     vm.sendMessage(context, it)
@@ -328,7 +334,7 @@ fun Chat(navController: NavController, chatType: Int = 0, vm: chatViewModel = vi
                     .verticalScroll(scrollState)
             ) {
 //                ChatBubble(message = Message("Hello", true, 0))
-//                ChatBubble(message = Message("Hi,I am A ChatBot.What Can I do for you?", false, 0))
+                if (!isLoading)ChatBubble(message = Message(if (modelType==0) "Hi! I am a AI ChatBot. How can I assist you today?" else "Hi! I am a AI ChatBot. Feel Free to Talk to me or even send me some pictures!", false, 0))
                 messages.forEach {
                     ChatBubble(message = it, vm, scope, imageViewerState)
                 }
@@ -354,6 +360,31 @@ fun Chat(navController: NavController, chatType: Int = 0, vm: chatViewModel = vi
 
             }
         }
+            if (isLoading) Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(it)
+                    .consumeWindowInsets(it)
+                    .systemBarsPadding()
+                    .background(Color.Transparent)
+            ) {
+               Column (
+                   Modifier.align(Alignment.Center),
+                   horizontalAlignment = Alignment.CenterHorizontally,
+                   verticalArrangement = Arrangement.Center
+                   ){
+                   Wave(
+                       size = 100.dp,
+                       color = MaterialTheme.colorScheme.onPrimaryContainer,
+                   )
+                   Spacer(modifier = Modifier.height(80.dp))
+                   Text(text = "Loading Model...",color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold
+                   )
+
+               }
+
+        }
+
         ImagePreviewer(state = imageViewerState, imageLoader = { pageIndex ->
             rememberAsyncImagePainter(
                 ImageRequest.Builder(LocalContext.current).data(data = photoList[pageIndex].uri)
@@ -423,22 +454,14 @@ fun BoxScope.PreviewBubble(preview: Uri) {
         )
     }
     Box(
-        // Positioned in the bottom left corner,above on BottomBar
-        //get screen height
 
         modifier = Modifier
             .align(Alignment.BottomStart)
             .shadow(10.dp, bubbleShape)
             .padding(start = 5.dp)
-//            .heightIn(min = 100.dp)
             .fillMaxWidth(0.2f)
-//            .clip(RoundedCornerShape(10.dp))
             .background(MaterialTheme.colorScheme.primaryContainer)
-//            .border(
-//                width = 1.dp,
-//                color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.5f),
-//                shape = RoundedCornerShape(10.dp)
-//            )
+
     ) {
         Image(
             painter = rememberAsyncImagePainter(
@@ -460,16 +483,23 @@ fun BoxScope.PreviewBubble(preview: Uri) {
 @Composable
 fun ChatInput(
     enable: Boolean,
-    vm: chatViewModel = viewModel(),
+    withImage:Boolean,
+   onImageSelected: (Uri?) -> Unit = {},
+
     onMessageSend: (Message) -> Unit = {}
 ) {
     var text by remember { mutableStateOf("") }
-    val result by vm.previewUri.observeAsState()
+    var imageUri = remember { mutableStateOf<Uri?>(null) }
+
 //softkeyborad
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) {
-        vm.setPreviewUri(it)
+       it?.let {
+           imageUri.value = it
+           onImageSelected(it)
+       }
+
     }
 
 
@@ -477,13 +507,13 @@ fun ChatInput(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
     ) {
-        IconButton(onClick = {
+       if(withImage) IconButton(onClick = {
             launcher.launch(
                 PickVisualMediaRequest(mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly)
             )
         }, Modifier.padding(10.dp)) {
             Image(
-                painter = painterResource(id = if (result != null) R.drawable.add_done else R.drawable.add_other),
+                painter = painterResource(id = if (imageUri.value != null) R.drawable.add_done else R.drawable.add_other),
                 contentDescription = "Add Other Resources.",
                 Modifier.size(32.dp)
             )
@@ -505,8 +535,6 @@ fun ChatInput(
         )
         IconButton(onClick = {
             keyboardController?.hide()
-            // if the last word of text is not a punctuation, add a period
-            // judge if the last word is a punctuation?
             val punctuation = listOf('.', '?', '!', ',', ';', ':', '。', '？', '！', '，', '；', '：')
             if (text.isNotEmpty() && !punctuation.contains(text.last()) && text.last() != '\n') text += "."
             onMessageSend(
@@ -514,10 +542,10 @@ fun ChatInput(
                     text,
                     true,
                     0,
-                    type = if (result == null) MessageType.TEXT else MessageType.IMAGE,
-                    content = result
+                    type = if (imageUri.value == null) MessageType.TEXT else MessageType.IMAGE,
+                    content = imageUri.value
                 )
-            );text = "";vm.setPreviewUri(null)
+            );text = "";imageUri.value = null;onImageSelected(null)
         }, enabled = enable) {
             Icon(
                 painter = painterResource(id = R.drawable.up),
@@ -533,7 +561,7 @@ fun ChatInput(
 @Composable
 fun ColumnScope.ChatBubble(
     message: Message,
-    vm: chatViewModel? = null,
+    vm: ChatViewModel? = null,
     scope: CoroutineScope = rememberCoroutineScope(),
     imageViewerState: ImagePreviewerState = rememberPreviewerState(pageCount = { 1 })
 ) {
@@ -562,7 +590,6 @@ fun ColumnScope.ChatBubble(
                 modifier = Modifier
                     .clickable {
                         scope.launch {
-                            //TODO:Index?
                             imageViewerState.open(id)
                         }
                     }
@@ -605,7 +632,6 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
             fontSize = 32.sp,
             lineHeight = 30.sp,
             color = MaterialTheme.colorScheme.onPrimaryContainer
-//            style = MaterialTheme.typography.headlineSmall.copy( lineHeightStyle = LineHeightStyle(alignment = LineHeightStyle.Alignment.Bottom, trim = LineHeightStyle.Trim.Both )),
         )
         // Subtitle
         Text(
@@ -629,13 +655,13 @@ fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController) 
 
         Row {
             EntryCard(icon = R.drawable.text,
-                backgoundColor = Color(0xEDADE6AA),
+                backgroundColor = Color(0xEDADE6AA),
                 title = "Text Reader",
                 subtitle = "\" The meaning of life is ....\"",
                 onClick = { navController.navigate("chat/1?type=0") })
             Spacer(Modifier.width(8.dp))
             EntryCard(icon = R.drawable.image,
-                backgoundColor = Purple80,
+                backgroundColor = Purple80,
                 title = "Image Reader",
                 subtitle = "\" say..How many stars in the sky?\"",
                 onClick = { navController.navigate("chat/1?type=1") }
@@ -647,14 +673,14 @@ fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController) 
         Row {
             EntryCard(icon = R.drawable.camera,
                 // Pick up a pink
-                backgoundColor = Color(0xEDF8BBD0),
+                backgroundColor = Color(0xEDF8BBD0),
                 title = "Take A Photo",
                 subtitle = "\" Show me the real world\"",
                 onClick = { navController.navigate("photo") })
             Spacer(Modifier.width(8.dp))
             EntryCard(icon = R.drawable.more_text,
                 // pick a blue style
-                backgoundColor = Color(0xEDB3E5FC),
+                backgroundColor = Color(0xEDB3E5FC),
                 title = "Show Me More Features!",
                 subtitle = "",
                 onClick = {
@@ -675,7 +701,7 @@ fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController) 
 @Composable
 fun RowScope.EntryCard(
     icon: Int,
-    backgoundColor: Color,
+    backgroundColor: Color,
     title: String,
     subtitle: String,
     modifier: Modifier = Modifier,
@@ -688,7 +714,7 @@ fun RowScope.EntryCard(
             .aspectRatio(0.8f),
         shape = RoundedCornerShape(20),
         colors = CardDefaults.cardColors(
-            containerColor = backgoundColor
+            containerColor = backgroundColor
         ),
     ) {
         Column(Modifier.padding(16.dp)) {
