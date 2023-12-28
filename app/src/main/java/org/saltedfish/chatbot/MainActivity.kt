@@ -308,8 +308,8 @@ fun Chat(navController: NavController, chatType: Int = 0, vm: ChatViewModel = vi
             })
         },
         bottomBar = {
-            if (imageViewerState.visible|| isLoading) null else BottomAppBar {
-                ChatInput(!isBusy, withImage = modelType==1, onImageSelected = {
+            if (imageViewerState.visible) null else BottomAppBar {
+                ChatInput(!isBusy&&!isLoading, withImage = modelType==1, onImageSelected = {
                     vm.setPreviewUri(it)
                 }
                 ) {
@@ -360,30 +360,30 @@ fun Chat(navController: NavController, chatType: Int = 0, vm: ChatViewModel = vi
 
             }
         }
-            if (isLoading) Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(it)
-                    .consumeWindowInsets(it)
-                    .systemBarsPadding()
-                    .background(Color.Transparent)
-            ) {
-               Column (
-                   Modifier.align(Alignment.Center),
-                   horizontalAlignment = Alignment.CenterHorizontally,
-                   verticalArrangement = Arrangement.Center
-                   ){
-                   Wave(
-                       size = 100.dp,
-                       color = MaterialTheme.colorScheme.onPrimaryContainer,
-                   )
-                   Spacer(modifier = Modifier.height(80.dp))
-                   Text(text = "Loading Model...",color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold
-                   )
-
-               }
-
-        }
+//            if (isLoading) Box(
+//                modifier = Modifier
+//                    .fillMaxSize()
+//                    .padding(it)
+//                    .consumeWindowInsets(it)
+//                    .systemBarsPadding()
+//                    .background(Color.Transparent)
+//            ) {
+//               Column (
+//                   Modifier.align(Alignment.Center),
+//                   horizontalAlignment = Alignment.CenterHorizontally,
+//                   verticalArrangement = Arrangement.Center
+//                   ){
+//                   Wave(
+//                       size = 100.dp,
+//                       color = MaterialTheme.colorScheme.onPrimaryContainer,
+//                   )
+//                   Spacer(modifier = Modifier.height(80.dp))
+//                   Text(text = "Loading Model...",color = MaterialTheme.colorScheme.onPrimaryContainer, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold
+//                   )
+//
+//               }
+//
+//        }
 
         ImagePreviewer(state = imageViewerState, imageLoader = { pageIndex ->
             rememberAsyncImagePainter(
@@ -520,7 +520,7 @@ fun ChatInput(
         }
         Spacer(modifier = Modifier.width(4.dp))
         OutlinedTextField(
-            enabled = enable,
+//            enabled = enable,
             value = text,
             onValueChange = { text = it },
             modifier = Modifier
