@@ -239,18 +239,6 @@ fun Home(navController: NavController) {
 
         ) {
             MainEntryCards(navController = navController)
-//            Column(Modifier.padding(top = 20.dp, start = 16.dp, end = 16.dp)) {
-//                Text(
-//                    text = "History",
-//                    style = MaterialTheme.typography.headlineMedium,
-//                    fontWeight = FontWeight.Bold,
-//                )
-//                Spacer(modifier = Modifier.height(10.dp))
-//                HistoryItem(icon = R.drawable.text, text = "The meaning of life is to achieve ....")
-//                HistoryItem(icon = R.drawable.image, text = "How many horses in this picture?")
-//
-//            }
-
         }
     }
 }
