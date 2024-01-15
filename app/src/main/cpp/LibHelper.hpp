@@ -35,7 +35,7 @@ namespace mllm {
     enum MLLMBackendType {
         CPU = 0,
         GPU,
-        NNAPI,
+        QNN,
     };
 
     typedef std::function<void(std::string, bool)> callback_t;
