@@ -2,6 +2,7 @@ package org.saltedfish.chatbot
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -175,13 +176,56 @@ class ChatViewModel : ViewModel() {
     }
 }
 class VQAViewModel:ViewModel(){
+    val messages = listOf(
+        "What's the message conveyed by screen?",
+        "When is the meal reservation?",
+        "Summary The Screenshot."
+    )
+    lateinit var  bitmap : Bitmap
     private var _selectedMessage: MutableLiveData<Int> = MutableLiveData<Int>(-1)
     val selectedMessage = _selectedMessage
     private var _answerText: MutableLiveData<String?> = MutableLiveData<String?>(null)
     val answerText = _answerText
+    var result_:Boolean = false
 
     fun setSelectedMessage(id:Int){
         _selectedMessage.value = id
+        if (result_&&id>-1){
+            sendMessage(messages[id])
+        }
+    }
+
+    init {
+        JNIBridge.setCallback { id,value, isStream ->
+            Log.i("PhotoViewModel","id:$id,value:$value,isStream:$isStream")
+            _answerText.postValue(value.trim().replace("|NEWLINE|","\n").replace("▁"," "))
+        }
+
+    }
+
+    fun initStatus(context: Context){
+        if (result_||answerText.value!=null) return;
+        viewModelScope.launch(Dispatchers.IO) {
+            bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.chat_record_demo)
+            bitmap = Bitmap.createScaledBitmap(bitmap, 720, 1280, true)
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            val result =JNIBridge.init(1,"/sdcard/Download/","model/fuyu.mllm","model/vocab_uni.mllm")
+            result_ = result
+            if (result&&selectedMessage.value!=null&& selectedMessage.value!! >-1){
+                sendMessage(messages[selectedMessage.value!!])
+            }
+            else if (!result){
+                _answerText.postValue("Fail to Load Models.")
+            }
+        }
+    }
+    fun sendMessage(message: String){
+//        answerText.postValue(msg)
+        viewModelScope.launch(Dispatchers.IO)  {
+            JNIBridge.runImage(0, bitmap2Bytes(bitmap),message,100)
+        }
+
     }
 
 }
@@ -232,9 +276,10 @@ class PhotoViewModel : ViewModel() {
 
     }
 
-    private fun bitmap2Bytes(bitmap: Bitmap): ByteArray {
-        val byteArrayOutputStream = ByteArrayOutputStream()
-        bitmap.compress(Bitmap.CompressFormat.PNG, 80, byteArrayOutputStream)
-        return byteArrayOutputStream.toByteArray()
-    }
+
+}
+private fun bitmap2Bytes(bitmap: Bitmap): ByteArray {
+    val byteArrayOutputStream = ByteArrayOutputStream()
+    bitmap.compress(Bitmap.CompressFormat.PNG, 80, byteArrayOutputStream)
+    return byteArrayOutputStream.toByteArray()
 }

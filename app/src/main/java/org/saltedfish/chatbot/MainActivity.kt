@@ -2,6 +2,7 @@ package org.saltedfish.chatbot
 
 import android.content.Intent
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.net.Uri
 import android.os.Bundle
 import android.os.Environment
@@ -72,6 +73,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.runtime.mutableStateOf
@@ -182,11 +184,12 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun VQA(navController: NavController, viewModel: VQAViewModel = viewModel()) {
     val selectedMessage by viewModel.selectedMessage.observeAsState()
-    val messages = listOf(
-        "What's the message conveyed by screen?",
-        "When is the meal reservation?",
-        "Summary The Screenshot."
-    )
+    val answer by viewModel.answerText.observeAsState()
+    val messages = viewModel.messages;
+    val context = LocalContext.current
+    LaunchedEffect(key1 = false) {
+        viewModel.initStatus(context)
+    }
     Scaffold(
         modifier = Modifier.imePadding(),
         containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
@@ -271,14 +274,21 @@ fun VQA(navController: NavController, viewModel: VQAViewModel = viewModel()) {
                             fontStyle = FontStyle.Italic
                         )
                         Spacer(modifier = Modifier.height(20.dp))
-                        Box(modifier = Modifier
+                        if(answer==null)Box(modifier = Modifier
                             .height(80.dp)
                             .fillMaxWidth(), contentAlignment = Alignment.Center){
-                                               Wave(
+                            Wave(
                        size = 50.dp,
                        color = MaterialTheme.colorScheme.onPrimaryContainer,
                    )
 
+                        }else{
+                            Text(
+                                text = answer!!,
+                                fontWeight = FontWeight.SemiBold,
+                                fontSize = 16.sp,
+                                fontFamily = FontFamily.Monospace,
+                            )
                         }
 
 //                        Text(
@@ -394,7 +404,6 @@ fun Home(navController: NavController) {
                     intent.data = Uri.parse("https://github.com/UbiquitousLearning/mllm")
                     context.startActivity(intent)
                 },
-
             )
         }
     ) {
