@@ -174,7 +174,17 @@ class ChatViewModel : ViewModel() {
         }
     }
 }
+class VQAViewModel:ViewModel(){
+    private var _selectedMessage: MutableLiveData<Int> = MutableLiveData<Int>(-1)
+    val selectedMessage = _selectedMessage
+    private var _answerText: MutableLiveData<String?> = MutableLiveData<String?>(null)
+    val answerText = _answerText
 
+    fun setSelectedMessage(id:Int){
+        _selectedMessage.value = id
+    }
+
+}
 class PhotoViewModel : ViewModel() {
     private var _message: MutableLiveData<Message> = MutableLiveData<Message>()
     val message = _message

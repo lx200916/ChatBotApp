@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Environment
 import android.provider.Settings
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -21,6 +22,7 @@ import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -47,7 +49,9 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material3.AssistChip
 import androidx.compose.material3.BottomAppBar
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
@@ -55,10 +59,13 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -84,6 +91,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -140,6 +148,9 @@ class MainActivity : ComponentActivity() {
                     composable("photo") {
                         Photo(navController)
                     }
+                    composable("vqa") {
+                        VQA(navController)
+                    }
                     // A surface container using the 'background' color from the theme
 
 
@@ -147,6 +158,136 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+}
+//@OptIn(ExperimentalMaterial3Api::class)
+//@Composable
+//fun rememberModalBottomSheetState(
+//    skipPartiallyExpanded: Boolean = false,
+//    confirmValueChange: (SheetValue) -> Boolean = { true },
+//) = rememberSaveable(
+//    skipPartiallyExpanded, confirmValueChange,
+//    saver = SheetState.Saver(
+//        skipPartiallyExpanded = skipPartiallyExpanded,
+//        confirmValueChange = confirmValueChange
+//    )
+//) {
+//    SheetState(skipPartiallyExpanded, SheetValue.Expanded, confirmValueChange, true)
+//}
+
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+fun VQA(navController: NavController, viewModel: VQAViewModel = viewModel()) {
+    val selectedMessage by viewModel.selectedMessage.observeAsState()
+    val messages = listOf(
+        "What's the message conveyed by the text?",
+        "When is the meal reservation?",
+        "Summary The Screenshot."
+    )
+    Scaffold(
+        modifier = Modifier.imePadding(),
+        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
+    ) {
+
+        Box(modifier = Modifier.padding(it)) {
+            Image(
+                painter = painterResource(id = R.drawable.chat_record_demo),
+                contentDescription = "Demo",
+                Modifier.fillMaxSize()
+            )
+
+            NeverHideBottomSheet{
+                BackHandler {
+                    if (selectedMessage != null && selectedMessage != -1) {
+                        viewModel.setSelectedMessage(-1)
+                    } else {
+                        navController.popBackStack()
+                    }
+                }
+                Column(Modifier.padding(20.dp)) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+//                        Text(text = "🤖", fontSize = 32.sp, modifier = Modifier.padding(end = 10.dp))
+                        Image(
+                            painter = painterResource(id = R.drawable.robot),
+                            contentDescription = "",
+                            Modifier
+                                .padding(end = 10.dp)
+                                .size(56.dp)
+                        )
+                        Column {
+                            Text(
+                                text = "Ask Me Something",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 24.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                            Text(
+                                text = "About the screen",
+                                fontWeight = FontWeight.Bold,
+                                fontSize = 17.sp,
+                                fontFamily = FontFamily.Monospace
+                            )
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(20.dp))
+
+                    if (selectedMessage == -1 || selectedMessage == null) {
+                        Text(
+                            text = "You may want to ask",
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 18.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontStyle = FontStyle.Italic
+                        )
+                        FlowRow {
+                            messages.forEachIndexed { index: Int, s: String ->
+                                AssistChip(label = { Text(text = s) },
+                                    onClick = { viewModel.setSelectedMessage(index) },
+                                    modifier = Modifier.padding(end = 10.dp),
+
+                                    leadingIcon = {
+                                        Image(
+                                            painter = painterResource(id = R.drawable.star_filled),
+                                            contentDescription = ""
+                                        )
+                                    })
+                            }
+
+                        }
+                    } else {
+                        Text(
+                            text = messages[selectedMessage!!],
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 18.sp,
+                            fontFamily = FontFamily.Monospace,
+                            fontStyle = FontStyle.Italic
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        Box(modifier = Modifier
+                            .height(80.dp)
+                            .fillMaxWidth(), contentAlignment = Alignment.Center){
+                                               Wave(
+                       size = 50.dp,
+                       color = MaterialTheme.colorScheme.onPrimaryContainer,
+                   )
+
+                        }
+
+//                        Text(
+//                            text = "Answer",
+//                            fontWeight = FontWeight.SemiBold,
+//                            fontSize = 18.sp,
+//                            fontFamily = FontFamily.Monospace,
+//                            fontStyle = FontStyle.Italic
+//                        )
+                    }
+
+                }
+            }
+
+        }
+    }
+
 }
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
@@ -297,7 +438,7 @@ fun Chat(navController: NavController, chatType: Int = 0, vm: ChatViewModel = vi
         },
         bottomBar = {
             if (imageViewerState.visible) null else BottomAppBar {
-                ChatInput(!isBusy&&!isLoading, withImage = modelType==1, onImageSelected = {
+                ChatInput(!isBusy && !isLoading, withImage = modelType == 1, onImageSelected = {
                     vm.setPreviewUri(it)
                 }
                 ) {
@@ -322,7 +463,13 @@ fun Chat(navController: NavController, chatType: Int = 0, vm: ChatViewModel = vi
                     .verticalScroll(scrollState)
             ) {
 //                ChatBubble(message = Message("Hello", true, 0))
-                if (!isLoading)ChatBubble(message = Message(if (modelType==0) "Hi! I am a AI ChatBot. How can I assist you today?" else "Hi! I am a AI ChatBot. Feel Free to Talk to me or even send me some pictures!", false, 0))
+                if (!isLoading) ChatBubble(
+                    message = Message(
+                        if (modelType == 0) "Hi! I am a AI ChatBot. How can I assist you today?" else "Hi! I am a AI ChatBot. Feel Free to Talk to me or even send me some pictures!",
+                        false,
+                        0
+                    )
+                )
                 messages.forEach {
                     ChatBubble(message = it, vm, scope, imageViewerState)
                 }
@@ -471,8 +618,8 @@ fun BoxScope.PreviewBubble(preview: Uri) {
 @Composable
 fun ChatInput(
     enable: Boolean,
-    withImage:Boolean,
-   onImageSelected: (Uri?) -> Unit = {},
+    withImage: Boolean,
+    onImageSelected: (Uri?) -> Unit = {},
 
     onMessageSend: (Message) -> Unit = {}
 ) {
@@ -483,10 +630,10 @@ fun ChatInput(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     val launcher = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) {
-       it?.let {
-           imageUri.value = it
-           onImageSelected(it)
-       }
+        it?.let {
+            imageUri.value = it
+            onImageSelected(it)
+        }
 
     }
 
@@ -495,7 +642,7 @@ fun ChatInput(
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier.background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f))
     ) {
-       if(withImage) IconButton(onClick = {
+        if (withImage) IconButton(onClick = {
             launcher.launch(
                 PickVisualMediaRequest(mediaType = ActivityResultContracts.PickVisualMedia.ImageOnly)
             )
@@ -669,13 +816,14 @@ fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController) 
             EntryCard(icon = R.drawable.more_text,
                 // pick a blue style
                 backgroundColor = Color(0xEDB3E5FC),
-                title = "Show Me More Features!",
+                title = "Read My Screen",
                 subtitle = "",
                 onClick = {
                     // visit Github!
-                    val intent = Intent(Intent.ACTION_VIEW)
-                    intent.data = Uri.parse("https://github.com/UbiquitousLearning/mllm")
-                    context.startActivity(intent)
+//                    val intent = Intent(Intent.ACTION_VIEW)
+//                    intent.data = Uri.parse("https://github.com/UbiquitousLearning/mllm")
+//                    context.startActivity(intent)
+                    navController.navigate("vqa")
                 }
 
             )
