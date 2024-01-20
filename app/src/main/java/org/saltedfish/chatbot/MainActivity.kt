@@ -49,6 +49,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.BottomSheetDefaults
@@ -56,6 +57,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -179,7 +183,7 @@ class MainActivity : ComponentActivity() {
 fun VQA(navController: NavController, viewModel: VQAViewModel = viewModel()) {
     val selectedMessage by viewModel.selectedMessage.observeAsState()
     val messages = listOf(
-        "What's the message conveyed by the text?",
+        "What's the message conveyed by screen?",
         "When is the meal reservation?",
         "Summary The Screenshot."
     )
@@ -204,8 +208,11 @@ fun VQA(navController: NavController, viewModel: VQAViewModel = viewModel()) {
                         navController.popBackStack()
                     }
                 }
-                Column(Modifier.padding(20.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp)) {
+                    Row(Modifier.padding(5.dp),verticalAlignment = Alignment.CenterVertically) {
 //                        Text(text = "🤖", fontSize = 32.sp, modifier = Modifier.padding(end = 10.dp))
                         Image(
                             painter = painterResource(id = R.drawable.robot),
@@ -229,7 +236,6 @@ fun VQA(navController: NavController, viewModel: VQAViewModel = viewModel()) {
                             )
                         }
                     }
-                    Spacer(modifier = Modifier.height(20.dp))
 
                     if (selectedMessage == -1 || selectedMessage == null) {
                         Text(
@@ -241,12 +247,14 @@ fun VQA(navController: NavController, viewModel: VQAViewModel = viewModel()) {
                         )
                         FlowRow {
                             messages.forEachIndexed { index: Int, s: String ->
-                                AssistChip(label = { Text(text = s) },
+                                FilterChip(label = { Text(text = s, )
+                                                   },
+                                    selected = true,
                                     onClick = { viewModel.setSelectedMessage(index) },
-                                    modifier = Modifier.padding(end = 10.dp),
 
                                     leadingIcon = {
                                         Image(
+                                            modifier = Modifier.size(16.dp),
                                             painter = painterResource(id = R.drawable.star_filled),
                                             contentDescription = ""
                                         )
@@ -368,12 +376,27 @@ fun Photo(navController: NavController, viewModel: PhotoViewModel = viewModel())
 
 @Composable
 fun Home(navController: NavController) {
+    val context = LocalContext.current
     Scaffold(
         containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
         contentWindowInsets = WindowInsets(16, 30, 16, 0),
         topBar = {
             Greeting("Android")
         },
+        floatingActionButtonPosition = FabPosition.Center,
+        floatingActionButton = {
+            ExtendedFloatingActionButton(
+                icon = {Icon(Icons.Rounded.Star,"Star Us!")},
+                text = { Text(text = "Star Us!") },
+                onClick = {
+                    // visit Github!
+                    val intent = Intent(Intent.ACTION_VIEW)
+                    intent.data = Uri.parse("https://github.com/UbiquitousLearning/mllm")
+                    context.startActivity(intent)
+                },
+
+            )
+        }
     ) {
         Column(
             modifier = Modifier.padding(it)
@@ -855,7 +878,7 @@ fun RowScope.EntryCard(
     ) {
         Column(Modifier.padding(16.dp)) {
             RoundIcon(id = icon, backgoundColor = Color.White)
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(10.dp))
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
