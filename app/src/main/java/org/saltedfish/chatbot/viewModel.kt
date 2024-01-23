@@ -179,7 +179,7 @@ class VQAViewModel:ViewModel(){
     val messages = listOf(
         "What's the message conveyed by screen?",
         "When is the meal reservation?",
-        "Summary The Screenshot."
+        "Summarize The Screenshot."
     )
     lateinit var  bitmap : Bitmap
     private var _selectedMessage: MutableLiveData<Int> = MutableLiveData<Int>(-1)
@@ -207,7 +207,7 @@ class VQAViewModel:ViewModel(){
         if (result_||answerText.value!=null) return;
         viewModelScope.launch(Dispatchers.IO) {
             bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.chat_record_demo)
-            bitmap = Bitmap.createScaledBitmap(bitmap, 270, 575, true)
+            bitmap = Bitmap.createScaledBitmap(bitmap, 210, 453, true)
         }
         viewModelScope.launch(Dispatchers.IO) {
             val result =JNIBridge.init(1,"/sdcard/Download/","model/fuyu.mllm","model/vocab_uni.mllm")
