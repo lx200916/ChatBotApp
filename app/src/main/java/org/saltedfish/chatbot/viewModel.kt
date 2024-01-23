@@ -207,7 +207,7 @@ class VQAViewModel:ViewModel(){
         if (result_||answerText.value!=null) return;
         viewModelScope.launch(Dispatchers.IO) {
             bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.chat_record_demo)
-            bitmap = Bitmap.createScaledBitmap(bitmap, 720, 1280, true)
+            bitmap = Bitmap.createScaledBitmap(bitmap, 270, 575, true)
         }
         viewModelScope.launch(Dispatchers.IO) {
             val result =JNIBridge.init(1,"/sdcard/Download/","model/fuyu.mllm","model/vocab_uni.mllm")
