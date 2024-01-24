@@ -90,6 +90,8 @@ extern "C" JNIEXPORT void JNICALL
 Java_org_saltedfish_chatbot_JNIBridge_runImage(JNIEnv* env, jobject obj, jint id, jbyteArray image, jstring text, jint maxStep) {
     callback.reset(new callback_t([env,id](std::string str,bool isEnd){
         try {
+//            __android_log_print(ANDROID_LOG_INFO,"MLLM","%s",str.c_str());
+
             jstring jstr = charToJString(env, str);
             env->CallVoidMethod(g_jniBridgeObject, g_callbackMethod,id, jstr, !isEnd);
             env->DeleteLocalRef(jstr);
