@@ -54,11 +54,13 @@ jstring charToJString(JNIEnv *env, string pat) {
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_org_saltedfish_chatbot_JNIBridge_init(JNIEnv *env, jobject thiz,  jint modelType,jstring basePath, jstring modelPath, jstring vacabPath
+Java_org_saltedfish_chatbot_JNIBridge_init(JNIEnv *env, jobject thiz,  jint modelType,jstring basePath, jstring modelPath, jstring vacabPath, jstring mergePath
                                            ) {
     const std::string weights_path_c = string(env->GetStringUTFChars(modelPath, nullptr));
     const auto vacab_path_c = string(env->GetStringUTFChars(vacabPath, nullptr));
     const auto base_path_c = string(env->GetStringUTFChars(basePath, nullptr));
+    const auto merge_path_c = string(env->GetStringUTFChars(mergePath, nullptr));
+
 //    auto fpath = (base_path_c+weights_path_c).c_str();
 //    // fopen
 //    auto fp = fopen(fpath,"rb");
@@ -66,7 +68,7 @@ Java_org_saltedfish_chatbot_JNIBridge_init(JNIEnv *env, jobject thiz,  jint mode
     if (libHelper!= nullptr) delete libHelper;
 
     libHelper = new LibHelper();
-    if(!libHelper->setUp(base_path_c, weights_path_c, vacab_path_c,
+    if(!libHelper->setUp(base_path_c, weights_path_c, vacab_path_c,merge_path_c,
                         static_cast<PreDefinedModel>(modelType))) return JNI_FALSE;
     return JNI_TRUE;
 }
@@ -74,6 +76,8 @@ extern "C" JNIEXPORT void JNICALL
 Java_org_saltedfish_chatbot_JNIBridge_run(JNIEnv *env, jobject thiz,jint id,jstring input, jint maxStep) {
     callback.reset(new callback_t([env,id](std::string str,bool isEnd){
         try {
+            __android_log_print(ANDROID_LOG_ERROR,"MLLM","%s",str.c_str());
+
             jstring jstr = charToJString(env, str);
             env->CallVoidMethod(g_jniBridgeObject, g_callbackMethod,id, jstr, !isEnd);
             env->DeleteLocalRef(jstr);
@@ -119,4 +123,47 @@ Java_org_saltedfish_chatbot_JNIBridge_setCallback(JNIEnv *env, jobject thiz) {
 }
 extern "C" JNIEXPORT void JNICALL Java_org_saltedfish_chatbot_JNIBridge_stop(JNIEnv *env, jobject thiz) {
     env->DeleteGlobalRef(g_jniBridgeObject);
+}
+extern "C"
+JNIEXPORT jfloatArray JNICALL
+Java_org_saltedfish_chatbot_JNIBridge_runForOnce(JNIEnv *env, jobject thiz, jstring input) {
+    auto input_c = string(env->GetStringUTFChars(input, nullptr));
+    auto out = libHelper->runForResult(input_c);
+    auto out_c = env->NewFloatArray(out.size());
+    env->SetFloatArrayRegion(out_c, 0, out.size(), reinterpret_cast<const jfloat *>(out.data()));
+    return out_c;
+}
+
+
+extern "C"
+JNIEXPORT jlong JNICALL
+Java_org_saltedfish_chatbot_JNIBridge_initForInstance(JNIEnv *env, jobject thiz, jint model_type,
+                                                      jstring base_path, jstring model_path,
+                                                      jstring vacab_path, jstring merge_path) {
+    const std::string weights_path_c = string(env->GetStringUTFChars(model_path, nullptr));
+    const auto vacab_path_c = string(env->GetStringUTFChars(vacab_path, nullptr));
+    const auto base_path_c = string(env->GetStringUTFChars(base_path, nullptr));
+    const auto merge_path_c = string(env->GetStringUTFChars(merge_path, nullptr));
+    auto instance = new LibHelper();
+    if(!instance->setUp(base_path_c, weights_path_c, vacab_path_c,merge_path_c,
+                        static_cast<PreDefinedModel>(model_type))) return -1;
+    return reinterpret_cast<jlong>(instance);
+
+}
+extern "C"
+JNIEXPORT jfloatArray JNICALL
+Java_org_saltedfish_chatbot_JNIBridge_runForInstance(JNIEnv *env, jobject thiz, jlong instance,
+                                                     jstring input) {
+    auto instance_c = reinterpret_cast<LibHelper *>(instance);
+    auto input_c = string(env->GetStringUTFChars(input, nullptr));
+    auto out = instance_c->runForResult(input_c);
+    auto out_c = env->NewFloatArray(out.size());
+    env->SetFloatArrayRegion(out_c, 0, out.size(), reinterpret_cast<const jfloat *>(out.data()));
+    return out_c;
+}
+extern "C"
+JNIEXPORT void JNICALL
+Java_org_saltedfish_chatbot_JNIBridge_releaseInstance(JNIEnv *env, jobject thiz, jlong instance) {
+    auto instance_c = reinterpret_cast<LibHelper *>(instance);
+    delete instance_c;
 }

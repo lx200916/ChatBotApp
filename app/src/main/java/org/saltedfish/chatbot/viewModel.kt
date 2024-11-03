@@ -21,6 +21,43 @@ data class Photo(
     val uri: Uri,
     val request: ImageRequest?
 )
+val PROMPT = """<|im_start|>system
+
+You are an expert in composing functions. You are given a query and a set of possible functions. 
+Based on the query, you will need to make one or more function calls to achieve the purpose. 
+If none of the function can be used, point it out. If the given question lacks the parameters required by the function,
+also point it out. Remember you should not use functions that is not suitable for the query and only return the function call in tools call sections. 
+<|im_end|>
+<|im_start|>user
+
+Here is a list of functions that you can invoke:
+
+%DOC%
+
+Should you decide to return the function call(s), Put it in the format of 
+${'$'}
+result1 = func0(arg1="value1", arg2="value2", ...)
+result2 = func1(arg1="value1", arg2=result1, ...)
+...
+${'$'}
+
+
+You can do nested function calling in the following way:
+result1 = func0(arg1="value1", arg2="value2", ...)
+result2 = func1(arg1="value1", arg2=result1, ...)
+...
+This means that the value of arg2 in func1 is the return value from func0.
+
+
+
+
+If there is a way to achieve the purpose using the given functions, please provide the function call(s) in the above format.
+REMEMBER TO ONLY RETURN THE FUNCTION CALLS LIKE THE EXAMPLE ABOVE, NO OTHER INFORMATION SHOULD BE RETURNED.
+
+Now my query is: %QUERY%
+<|im_end|>
+<|im_start|>assistant
+"""
 class ChatViewModel : ViewModel() {
 //    private var _inputText: MutableLiveData<String> = MutableLiveData<String>()
 //    val inputText: LiveData<String> = _inputText
@@ -30,6 +67,8 @@ class ChatViewModel : ViewModel() {
     private var _photoList: MutableLiveData<List<Photo>> = MutableLiveData<List<Photo>>(
         listOf()
     )
+    var functions_:Functions? = null
+    var docVecDB:DocumentVecDB? = null
     val photoList = _photoList
     private var _previewUri: MutableLiveData<Uri?> = MutableLiveData<Uri?>(null)
     val previewUri = _previewUri
@@ -62,7 +101,8 @@ class ChatViewModel : ViewModel() {
 //        _inputText.value = text
 //    }
     init {
-        JNIBridge.setCallback { id,value, isStream ->
+
+    JNIBridge.setCallback { id,value, isStream ->
 //            val message = Message(
 //                value,
 //                false,
@@ -98,6 +138,22 @@ class ChatViewModel : ViewModel() {
 
         }
     }
+    fun sendInstruct(content: Context,message: Message){
+        if (message.isUser){
+            addMessage(message)
+            val bot_message = Message("...",false,0)
+            bot_message.id = _lastId++
+            addMessage(bot_message)
+            _isBusy.value = true
+            CoroutineScope(Dispatchers.IO).launch {
+                val query = docVecDB?.queryDocument(message.text)
+                Log.i("chatViewModel","query:$query")
+                val query_docs = query?.map { it.generateAPIDoc() }?.joinToString("\n\n==================================================\n\n")
+                val prompt = PROMPT.replace("%QUERY%",message.text).replace("%DOC%",query_docs?:"")
+                JNIBridge.run(bot_message.id,prompt,100)
+            }
+        }
+    }
     fun sendMessage(context:Context,message: Message){
         if (message.isUser){
             addMessage(message)
@@ -105,7 +161,8 @@ class ChatViewModel : ViewModel() {
             bot_message.id = _lastId++
             addMessage(bot_message)
             _isBusy.value = true
-            if (modelType.value ==0){
+            if (arrayOf(0,2).contains(modelType.value)){
+//            if (modelType.value == 0){
                 CoroutineScope(Dispatchers.IO).launch {
 //                val run_text = "A dialog, where User interacts with AI. AI is helpful, kind, obedient, honest, and knows its own limits.\nUser: ${message.text}"
                     JNIBridge.run(bot_message.id,message.text,100)
@@ -127,15 +184,25 @@ class ChatViewModel : ViewModel() {
 
     fun initStatus(context: Context,modelType:Int=_modelType.value?:0){
         if (_isExternalStorageManager.value != true) return;
+        Log.e("chatViewModel", "initStatus$modelType")
         val modelPath = when(modelType){
-            0->"model/llama_2.mllm"
+            0->"model/qwen-2.5-1.5b-instruct-q4_0_4_4.mllm"
+            3->"model/phonelm-1.5b-droidcall-q4_0_4_4.mllm"
             1->"model/fuyu.mllm"
+            2->"model/tinyllama.mllm"
             else->"model/llama"
         }
         val vacabPath = when(modelType){
-            0->"model/vocab.mllm"
+            0->"model/qwen2.5_vocab.mllm"
+            3->"model/phonelm_vocab.mllm"
             1->"model/vocab_uni.mllm"
+            2->"model/tinyllama_vocab.mllm"
             else->"model/vocab.mllm"
+        }
+        val mergePath = when (modelType){
+            0->"model/qwen2.5_merges.txt"
+            3->"model/phonelm_merges.txt"
+            else->""
         }
         var downloadsPath = "/sdcard/Download/"
         if (!downloadsPath.endsWith("/")){
@@ -143,9 +210,10 @@ class ChatViewModel : ViewModel() {
         }
         //list files of downloadsPath
         val files = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.listFiles()
+
         Log.i("chatViewModel","files:${files?.size}")
         viewModelScope.launch(Dispatchers.IO)  {
-            val result = JNIBridge.init( modelType, downloadsPath,modelPath, vacabPath)
+            val result = JNIBridge.Init( modelType, downloadsPath,modelPath, vacabPath,mergePath)
             if (result){
 //                addMessage(Message("Model Loaded!",false,0),true)
                 _isLoading.postValue(false)
@@ -172,6 +240,12 @@ class ChatViewModel : ViewModel() {
             // change the item of immutable list
             list[index] = message
             _messageList.postValue(list.toList())
+        }
+        if (!isStreaming){
+           val functions = parseFunctionCall(content)
+            functions.forEach {
+                functions_?.execute(it)
+            }
         }
     }
 }
@@ -210,7 +284,7 @@ class VQAViewModel:ViewModel(){
             bitmap = Bitmap.createScaledBitmap(bitmap, 210, 453, true)
         }
         viewModelScope.launch(Dispatchers.IO) {
-            val result =JNIBridge.init(1,"/sdcard/Download/","model/fuyu.mllm","model/vocab_uni.mllm")
+            val result =JNIBridge.Init(1,"/sdcard/Download/","model/fuyu.mllm","model/vocab_uni.mllm")
             result_ = result
             if (result&&selectedMessage.value!=null&& selectedMessage.value!! >-1){
                 sendMessage(messages[selectedMessage.value!!])
@@ -229,6 +303,44 @@ class VQAViewModel:ViewModel(){
     }
 
 }
+class SummaryViewModel:ViewModel(){
+    private var _message: MutableLiveData<Message> = MutableLiveData<Message>()
+    val message = _message
+    private var _result: MutableLiveData<Boolean> = MutableLiveData<Boolean>(false)
+    val result = _result
+
+
+
+    private fun updateMessageText(message:String){
+        val msg = _message.value?.copy()?: Message("...",false,0)
+        msg.text = message
+        _message.postValue(msg)
+    }
+
+    init {
+        JNIBridge.setCallback { id,value, isStream ->
+            Log.i("SummaryViewModel","id:$id,value:$value,isStream:$isStream")
+            updateMessageText(value.trim().replace("|NEWLINE|","\n").replace("▁"," "))
+        }
+//        initStatus()
+    }
+    fun initStatus(){
+
+        viewModelScope.launch(Dispatchers.IO) {
+            val result =JNIBridge.Init(1,"/sdcard/Download/","model/qwen.mllm","model/vocab_qwen.mllm")
+            _result.postValue(result)
+            if (!result){
+                updateMessageText("Fail to Load Models.")
+            }
+        }
+    }
+    fun sendMessage(message: String){
+        val msg = Message("...",false,0,)
+        _message.postValue(msg)
+        viewModelScope.launch(Dispatchers.IO)  {
+            JNIBridge.run(msg.id,message,100)
+        }
+}}
 class PhotoViewModel : ViewModel() {
     private var _message: MutableLiveData<Message> = MutableLiveData<Message>()
     val message = _message
@@ -257,7 +369,7 @@ class PhotoViewModel : ViewModel() {
     fun initStatus(){
 
         viewModelScope.launch(Dispatchers.IO) {
-            val result =JNIBridge.init(1,"/sdcard/Download/","model/fuyu.mllm","model/vocab_uni.mllm")
+            val result =JNIBridge.Init(1,"/sdcard/Download/","model/fuyu.mllm","model/vocab_uni.mllm")
             result_ = result
             if (result&&message.value==null&&_bitmap.value!=null){
                 sendMessage("Describe this photo.",_bitmap.value!!)

@@ -1,6 +1,9 @@
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
+    id "io.objectbox"  // Apply last
+    id("kotlin-kapt") // Only for Kotlin projects
+
 }
 
 android {
@@ -45,7 +48,7 @@ android {
         compose true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion '1.5.1'
+        kotlinCompilerExtensionVersion '1.5.14'
     }
     packaging {
         resources {
@@ -64,7 +67,7 @@ dependencies {
     implementation("io.coil-kt:coil-compose:2.5.0")
     implementation("io.coil-kt:coil:2.5.0")
 
-    implementation 'androidx.core:core-ktx:1.10.1'
+    implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.6.2'
     implementation 'androidx.activity:activity-compose:1.8.2'
     implementation platform('androidx.compose:compose-bom:2023.08.00')
@@ -77,8 +80,9 @@ dependencies {
     implementation 'com.github.jvziyaoyao:ImageViewer:1.0.2-alpha.8'
     implementation 'com.github.commandiron:ComposeLoading:1.0.4'
 //    implementation "com.holix.android:bottomsheetdialog-compose:1.4.0"
-    implementation("com.google.android.material:material:1.11.0")
-
+    implementation "com.google.android.material:material:1.11.0"
+    implementation "org.jetbrains.kotlin:kotlin-reflect" // Ensure compatibility with your Kotlin version
+    implementation "com.fasterxml.jackson.module:jackson-module-kotlin:2.18.+"
 
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
