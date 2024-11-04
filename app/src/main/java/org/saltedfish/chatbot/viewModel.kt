@@ -161,7 +161,7 @@ class ChatViewModel : ViewModel() {
             bot_message.id = _lastId++
             addMessage(bot_message)
             _isBusy.value = true
-            if (arrayOf(0,2).contains(modelType.value)){
+            if (arrayOf(0,2,3).contains(modelType.value)){
 //            if (modelType.value == 0){
                 CoroutineScope(Dispatchers.IO).launch {
 //                val run_text = "A dialog, where User interacts with AI. AI is helpful, kind, obedient, honest, and knows its own limits.\nUser: ${message.text}"
@@ -188,6 +188,7 @@ class ChatViewModel : ViewModel() {
         val modelPath = when(modelType){
             0->"model/qwen-2.5-1.5b-instruct-q4_0_4_4.mllm"
             3->"model/phonelm-1.5b-droidcall-q4_0_4_4.mllm"
+//            3->"model/phonelm-1.5b-instruct-q4_0_4_4.mllm"
             1->"model/fuyu.mllm"
             2->"model/tinyllama.mllm"
             else->"model/llama"

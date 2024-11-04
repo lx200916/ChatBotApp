@@ -965,7 +965,7 @@ fun Chat(navController: NavController, chatType: Int = 0, vm: ChatViewModel = vi
                     //TODO
                     //Get timestamp
                     vm.sendInstruct(context, it)
-
+//                    vm.sendMessage(context,it)
                 }
             }
         }) {
