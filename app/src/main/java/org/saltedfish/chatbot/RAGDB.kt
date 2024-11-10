@@ -26,7 +26,7 @@ import java.io.IOException
 
 private object EMBEDDING {
     const val DIMENSIONS: Long = 384
-    const val NUM_RESULTS: Int = 2
+    const val NUM_RESULTS: Int = 3
 }
 //{"name": "ACTION_CREATE_DOCUMENT", "description": "Creates a new document that app can write to. And user can select where they'd like to create it.\n\nInstead of selecting from existing PDF documents, \nthe ACTION_CREATE_DOCUMENT lets users select where they'd like to create a new document, such as within another app that manages the document's storage. \nAnd then return the URI location of document that you can read from and write to.", "arguments": {"mime_type": {"description": "The MIME type of the document to be created (e.g., \"text/plain\", \"application/pdf\").", "type": "str", "required": true}, "initial_name": {"description": "The suggested name for the new document.", "type": "str", "required": true}}, "returns": {"description": "A URI as a string pointing to the newly created document.\nReturns None if the operation is cancelled or fails.", "type": "Optional[str]"}, "examples": ["# Create a new text document\nnew_doc_uri = ACTION_CREATE_DOCUMENT(\"text/plain\", \"New Document.txt\")\n\n# Create a new PDF file\nnew_pdf_uri = ACTION_CREATE_DOCUMENT(\"application/pdf\", \"Report.pdf\")\n\n# Create a new image file\nnew_image_uri = ACTION_CREATE_DOCUMENT(\"image/jpeg\", \"Photo.jpg\")"]}
 @JsonDeserialize
@@ -169,9 +169,9 @@ object DocumentVecDB {
 
 
     fun init(context: Context, jsonlFileName: String) {
-//        if (this::store.isInitialized) {
-//            return
-//        }
+        if (this::store.isInitialized) {
+            return
+        }
         store = MyObjectBox.builder()
             .androidContext(context)
             .build()

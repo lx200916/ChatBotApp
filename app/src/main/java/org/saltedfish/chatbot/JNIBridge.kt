@@ -1,13 +1,14 @@
 package org.saltedfish.chatbot
 
-import android.content.res.AssetManager
 enum class ModelType{
-    LLAMA,FUYU,EMBEDDING,EMPTY
+    QWEN,FUYU,EMBEDDING,PhoneLM,EMPTY
 }
 object JNIBridge {
     var modelType_:ModelType = ModelType.EMPTY
     private var callback: ((Int,String, Boolean) -> Unit)? = null
     init {
+//        Set Environment Variable
+
                  System.loadLibrary("chatbot")
       }
     fun setCallback(callback: (Int,String,Boolean) -> Unit) {
@@ -21,21 +22,22 @@ object JNIBridge {
             it(id,value,isStream)
         }
     }
-    fun Init(modelType:Int,basePath:String,modelPath:String,vacabPath:String,mergePath:String=""):Boolean{
+    fun Init(modelType:Int,basePath:String,modelPath:String,vacabPath:String,mergePath:String="",backend: Int=0):Boolean{
         modelType_ = when(modelType){
-            0->ModelType.LLAMA
+            0->ModelType.QWEN
             1->ModelType.FUYU
             2->ModelType.EMBEDDING
+            3->ModelType.PhoneLM
             else->ModelType.EMPTY
         }
 //        val mergePath=basePath+mergePath
 //        val vacabPath=basePath+vacabPath
 //        val modelPath=basePath+modelPath
 //        val basePath=""
-        return init(modelType,basePath,modelPath,vacabPath,mergePath)
+        return init(modelType,basePath,modelPath,vacabPath,mergePath,backend)
     }
-    private external fun init(modelType:Int, basePath:String, modelPath:String, vacabPath:String,mergePath:String):Boolean
-    external fun run(id:Int,input:String,maxStep:Int)
+    private external fun init(modelType:Int, basePath:String, modelPath:String, vacabPath:String,mergePath:String,backend:Int):Boolean
+    external fun run(id:Int, input:String, maxStep:Int, applyChatTemplate:Boolean=true)
     external fun runImage(id:Int,image:ByteArray,text:String,maxStep:Int)
     external fun runForOnce(input: String):FloatArray
     external fun setCallback()

@@ -58,7 +58,7 @@ import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material3.BottomAppBar
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -70,10 +70,15 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -154,11 +159,13 @@ class MainActivity : ComponentActivity() {
                 NavHost(navController = navController, startDestination = "home") {
                     composable("home") { Home(navController) }
                     composable(
-                        "chat/{id}?type={type}",
+                        "chat/{id}?type={type}&device={device}",
                         arguments = listOf(navArgument("id") { type = NavType.IntType },
-                            navArgument("type") { type = NavType.IntType;defaultValue = 0 })
+                            navArgument("type") { type = NavType.IntType;defaultValue = 0 },
+                            navArgument("device") { type = NavType.IntType;defaultValue = 0 }
+                            )
                     ) {
-                        Chat(navController, it.arguments?.getInt("type") ?: 3)
+                        Chat(navController, it.arguments?.getInt("type") ?: 3, it.arguments?.getInt("id") ?: 0, it.arguments?.getInt("device") ?: 0)
                     }
                     composable("photo") {
                         Photo(navController)
@@ -173,9 +180,13 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    val functionsMap: Map<String, KFunction<*>> = this::class.memberFunctions
-        .associateBy { it.name }
-    val functions  = Functions(context = this, outerFunctionsMap = functionsMap)
+    val functionsMap: Map<String, KFunction<*>> by lazy {
+        this::class.memberFunctions
+            .associateBy { it.name }
+    }
+    val functions  by lazy {
+         Functions(context = this, outerFunctionsMap = functionsMap)
+    }
     fun web_search(query: String, engine: String="google") {
         // use google or baidu to search
         // directly open the browser using action view
@@ -868,25 +879,36 @@ fun Photo(navController: NavController, viewModel: PhotoViewModel = viewModel())
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun Home(navController: NavController) {
     val context = LocalContext.current
+    val sheetState = rememberModalBottomSheetState()
+    val scope = rememberCoroutineScope()
+    var showBottomSheet by remember { mutableStateOf(false) }
+    var selectedIndex by remember { mutableStateOf(0) }
+    var selectedBackend by remember { mutableStateOf(0) }
+    val modelNames = listOf("PhoneLM","Qwen 2.5")
+    val deviceNames = listOf("CPU","NPU")
+
     Scaffold(
         containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
-        contentWindowInsets = WindowInsets(16, 30, 16, 0),
+        contentWindowInsets = WindowInsets(16, 20, 16, 0),
         topBar = {
             Greeting("Android")
         },
         floatingActionButtonPosition = FabPosition.Center,
         floatingActionButton = {
             ExtendedFloatingActionButton(
-                icon = { Icon(Icons.Rounded.Star, "Star Us!") },
-                text = { Text(text = "Star Us!") },
+                modifier = Modifier.padding(bottom = 10.dp),
+                icon = { Icon(Icons.Rounded.Settings, "Star Us!") },
+                text = { Text(text = "Model Settings") },
                 onClick = {
                     // visit Github!
-                    val intent = Intent(Intent.ACTION_VIEW)
-                    intent.data = Uri.parse("https://github.com/UbiquitousLearning/mllm")
-                    context.startActivity(intent)
+//                    val intent = Intent(Intent.ACTION_VIEW)
+//                    intent.data = Uri.parse("https://github.com/UbiquitousLearning/mllm")
+//                    context.startActivity(intent)
+                    showBottomSheet = true
                 },
             )
         }
@@ -895,16 +917,78 @@ fun Home(navController: NavController) {
             modifier = Modifier.padding(it)
 
         ) {
-            MainEntryCards(navController = navController)
+            MainEntryCards(navController = navController, selectedIndex = selectedIndex, selectedBackend = selectedBackend)
+        }
+        if (showBottomSheet) {
+            ModalBottomSheet(
+                onDismissRequest = {
+                    showBottomSheet = false
+                },
+                sheetState = sheetState
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        "Choose a Instructed LLM for non-multimodal tasks",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                        modelNames.forEachIndexed { index, s ->
+                            SegmentedButton(
+                                shape = SegmentedButtonDefaults.itemShape(
+                                    index = index,
+                                    count = modelNames.size
+                                ),
+                                selected = selectedIndex == index,
+
+                                onClick = {
+                                    selectedIndex = index
+                                }
+                            ) {
+                                Text(text = s)
+                            }
+                        }
+
+                    }
+                    Text(
+                        "Choose a Backend",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                        deviceNames.forEachIndexed { index, s ->
+                            SegmentedButton(
+                                shape = SegmentedButtonDefaults.itemShape(
+                                    index = index,
+                                    count = modelNames.size
+                                ),
+                                selected = selectedBackend == index,
+
+                                onClick = {
+                                    selectedBackend = index
+                                }
+                            ) {
+                                Text(text = s)
+                            }
+                        }
+
+                    }
+                }
+            }
         }
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun Chat(navController: NavController, chatType: Int = 0, vm: ChatViewModel = viewModel()) {
-    LaunchedEffect(key1 = chatType) {
+fun Chat(navController: NavController, chatType: Int = 0,modelId:Int=0,deviceId:Int=0, vm: ChatViewModel = viewModel()) {
+    LaunchedEffect(key1 = chatType, key2 = modelId) {
         vm.setModelType(chatType)
+        vm.setModelId(modelId)
     }
 
     val previewUri by vm.previewUri.observeAsState()
@@ -964,8 +1048,8 @@ fun Chat(navController: NavController, chatType: Int = 0, vm: ChatViewModel = vi
                 ) {
                     //TODO
                     //Get timestamp
-                    vm.sendInstruct(context, it)
-//                    vm.sendMessage(context,it)
+//                    vm.sendInstruct(context, it)
+                    vm.sendMessage(context,it)
                 }
             }
         }) {
@@ -985,7 +1069,7 @@ fun Chat(navController: NavController, chatType: Int = 0, vm: ChatViewModel = vi
 //                ChatBubble(message = Message("Hello", true, 0))
                 if (!isLoading) ChatBubble(
                     message = Message(
-                        if (modelType == 0) "Hi! I am a AI ChatBot. How can I assist you today?" else "Hi! I am a AI ChatBot. Feel Free to Talk to me or even send me some pictures!",
+                        if (modelType == 3) "Hi! I am a AI ChatBot. How can I help you today?" else "Hi! I am a Phone Assistant!How can I assist you today?",
                         false,
                         0
                     )
@@ -1278,7 +1362,8 @@ fun ColumnScope.ChatBubbleBox(isUser: Boolean, content: @Composable () -> Unit) 
 
 @Composable
 fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Column(modifier = modifier.padding(top = 64.dp, start = 20.dp)) {
+
+    Column(modifier = modifier.padding(top = 56.dp, start = 20.dp)) {
         Text(
             text = "Let's Chat",
             fontWeight = FontWeight.Bold,
@@ -1298,38 +1383,57 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController) {
+fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController,selectedIndex:Int = 0,selectedBackend:Int = 0) {
     val context = LocalContext.current
+
     Column(
         Modifier
             .padding(8.dp)
-            .padding(top = 20.dp)
+            .padding(top = 10.dp)
     ) {
+//        Text("Choose a Instructed LLM \n for non-multimodal tasks", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+//        SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()){
+//            options.forEachIndexed { index, s ->
+//                SegmentedButton(
+//                    shape = SegmentedButtonDefaults.itemShape(index = index, count = options.size),
+//                    selected = selectedIndex == index,
+//
+//                    onClick = {
+//                        selectedIndex = index
+//                    }
+//                ){
+//                    Text(text = s)
+//                }
+//            }
+//
+//        }
+////        HorizontalDivider()
+//        Spacer(modifier = Modifier.height(8.dp))
 
         Row {
             EntryCard(icon = R.drawable.text,
                 backgroundColor = Color(0xEDADE6AA),
                 title = "Text Reader",
                 subtitle = "\" The meaning of life is ....\"",
-                onClick = { navController.navigate("chat/1?type=3") })
+                onClick = { navController.navigate("chat/$selectedIndex?type=3") })
             Spacer(Modifier.width(8.dp))
             EntryCard(icon = R.drawable.image,
                 backgroundColor = Purple80,
                 title = "Image Reader",
                 subtitle = "\" say..How many stars in the sky?\"",
-                onClick = { navController.navigate("chat/1?type=1") }
+                onClick = { navController.navigate("chat/$selectedIndex?type=1") }
 
             )
 
         }
         Spacer(Modifier.height(8.dp))
         Row {
-            EntryCard(icon = R.drawable.camera,
+            EntryCard(icon = R.drawable.tools,
                 // Pick up a pink
                 backgroundColor = Color(0xEDF8BBD0),
-                title = "Take A Photo",
-                subtitle = "\" Show me the real world\"",
-                onClick = { navController.navigate("photo") })
+                title = "Takeover My Phone",
+                subtitle = "\" Show me the power\"",
+                onClick = { navController.navigate("chat/$selectedIndex?type=4") })
             Spacer(Modifier.width(8.dp))
             EntryCard(icon = R.drawable.more_text,
                 // pick a blue style

@@ -58,6 +58,7 @@ Now my query is: %QUERY%
 <|im_end|>
 <|im_start|>assistant
 """
+val MODEL_NAMES = arrayOf("Qwen","","Bert","PhoneLM")
 class ChatViewModel : ViewModel() {
 //    private var _inputText: MutableLiveData<String> = MutableLiveData<String>()
 //    val inputText: LiveData<String> = _inputText
@@ -81,9 +82,18 @@ class ChatViewModel : ViewModel() {
     val _isLoading = MutableLiveData<Boolean>(true)
     val isLoading = _isLoading
     private var _modelType = MutableLiveData<Int>(0)
+    private var _modelId = MutableLiveData<Int>(0)
+    val modelId = _modelId
     val modelType = _modelType
+    private var _backendType = -1
     fun setModelType(type:Int){
         _modelType.value = type
+    }
+    fun setBackendType(type:Int){
+        _backendType=type
+    }
+    fun setModelId(id:Int){
+        _modelId.value = id
     }
     fun setPreviewUri(uri: Uri?){
         _previewUri.value = uri
@@ -150,11 +160,15 @@ class ChatViewModel : ViewModel() {
                 Log.i("chatViewModel","query:$query")
                 val query_docs = query?.map { it.generateAPIDoc() }?.joinToString("\n\n==================================================\n\n")
                 val prompt = PROMPT.replace("%QUERY%",message.text).replace("%DOC%",query_docs?:"")
-                JNIBridge.run(bot_message.id,prompt,100)
+                JNIBridge.run(bot_message.id,prompt,100,false)
             }
         }
     }
     fun sendMessage(context:Context,message: Message){
+        if (modelType.value==4){
+            sendInstruct(context,message)
+            return
+        }
         if (message.isUser){
             addMessage(message)
             val bot_message = Message("...",false,0)
@@ -185,24 +199,40 @@ class ChatViewModel : ViewModel() {
     fun initStatus(context: Context,modelType:Int=_modelType.value?:0){
         if (_isExternalStorageManager.value != true) return;
         Log.e("chatViewModel", "initStatus$modelType")
+        val model_info = "$modelId:$modelType"
+        val model_id = modelId.value
+        //modelId: 0->PhoneLM,1->Qwen
         val modelPath = when(modelType){
-            0->"model/qwen-2.5-1.5b-instruct-q4_0_4_4.mllm"
-            3->"model/phonelm-1.5b-droidcall-q4_0_4_4.mllm"
-//            3->"model/phonelm-1.5b-instruct-q4_0_4_4.mllm"
+            3->{
+                when(model_id){
+                    0->"model/phonelm-1.5b-instruct-q4_0_4_4.mllm"
+                    1->"model/qwen-1.5-1.8b-chat-q4k.mllm"
+//                    1->"model/qwen-2.5-1.5b-instruct-q4_0_4_4.mllm"
+                    else->"model/phonelm-1.5b-instruct-q4_0_4_4.mllm"
+                }
+            }
             1->"model/fuyu.mllm"
-            2->"model/tinyllama.mllm"
-            else->"model/llama"
+            4->{
+                when(model_id){
+                    0->"model/phonelm-1.5b-droidcall-q4_0_4_4.mllm"
+                    1->"model/qwen-2.5-1.5b-droidcall-q4_0_4_4.mllm"
+                    else->"qwen-2.5-1.5b-droidcall-q4_0_4_4.mllm"
+                }
+            }
+            else -> "model/phonelm-1.5b-instruct-q4_0_4_4.mllm"
         }
-        val vacabPath = when(modelType){
-            0->"model/qwen2.5_vocab.mllm"
-            3->"model/phonelm_vocab.mllm"
-            1->"model/vocab_uni.mllm"
-            2->"model/tinyllama_vocab.mllm"
-            else->"model/vocab.mllm"
+        val vacabPath = when(model_id){
+            1->"model/qwen2.5_vocab.mllm"
+            0->"model/phonelm_vocab.mllm"
+
+            else->{
+                if (modelType==1) "model/vocab_uni.mllm"
+                else "model/vocab.mllm"
+            }
         }
-        val mergePath = when (modelType){
-            0->"model/qwen2.5_merges.txt"
-            3->"model/phonelm_merges.txt"
+        val mergePath = when (model_id){
+            1->"model/qwen2.5_merges.txt"
+            0->"model/phonelm_merges.txt"
             else->""
         }
         var downloadsPath = "/sdcard/Download/"
@@ -212,11 +242,23 @@ class ChatViewModel : ViewModel() {
         //list files of downloadsPath
         val files = context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS)?.listFiles()
 
-        Log.i("chatViewModel","files:${files?.size}")
+        Log.i("chatViewModel", "files:${files?.size}")
+        val load_model = when (modelType) {
+            1 -> 1
+            3, 4 -> {
+                if (model_id == 0) {
+                    3
+                } else {
+                    0
+                }
+
+
+            }else -> 0
+        }
         viewModelScope.launch(Dispatchers.IO)  {
-            val result = JNIBridge.Init( modelType, downloadsPath,modelPath, vacabPath,mergePath)
+            val result = JNIBridge.Init( load_model, downloadsPath,modelPath, vacabPath,mergePath)
             if (result){
-//                addMessage(Message("Model Loaded!",false,0),true)
+                addMessage(Message("Model ${MODEL_NAMES[load_model]} Loaded!",false,0),true)
                 _isLoading.postValue(false)
                 _isBusy.postValue(false)
             }else{
@@ -242,7 +284,8 @@ class ChatViewModel : ViewModel() {
             list[index] = message
             _messageList.postValue(list.toList())
         }
-        if (!isStreaming){
+        if (!isStreaming&&modelType.value==4){
+            message?.text="Done for you."
            val functions = parseFunctionCall(content)
             functions.forEach {
                 functions_?.execute(it)
