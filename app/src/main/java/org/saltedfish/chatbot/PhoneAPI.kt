@@ -299,24 +299,25 @@ fun parseFunctionCall(node: JsonNode): FunctionCall? {
 
 fun parseFunctionCall(text: String): List<FunctionCall> {
     // 匹配被两个 $ 符号包围的内容
-    val dollarRegex = Regex("""\$(.*?)\$""", RegexOption.DOT_MATCHES_ALL)
-    val matchResult = dollarRegex.find(text)
-
-    if (matchResult != null) {
-        // 提取 $...$ 中的 JSON 字符串内容
-        val dollarContent = matchResult.groupValues[1]
-        if(dollarContent.isNotEmpty()){
-            val result = mutableListOf<FunctionCall>()
-            if ("{" in dollarContent || "[" in dollarContent ){
-                result +=  parseJsonObjects(dollarContent)
-            }
-            if(result.isEmpty()){
-                result += extractCalls(dollarContent)
-            }
-            return result
-        }
-    }
-    return listOf()
+//    val dollarRegex = Regex("""\$(.*?)\$""", RegexOption.DOT_MATCHES_ALL)
+//    val matchResult = dollarRegex.find(text)
+//
+//    if (matchResult != null) {
+//        // 提取 $...$ 中的 JSON 字符串内容
+//        val dollarContent = matchResult.groupValues[1]
+//        if(dollarContent.isNotEmpty()){
+//            val result = mutableListOf<FunctionCall>()
+//            if ("{" in dollarContent || "[" in dollarContent ){
+//                result +=  parseJsonObjects(dollarContent)
+//            }
+//            if(result.isEmpty()){
+//                result += extractCalls(dollarContent)
+//            }
+//            return result
+//        }
+//    }
+//    return listOf()
+    return extractCalls(text)
 }
 //// 主函数
 //fun main() {
