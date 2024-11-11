@@ -55,13 +55,12 @@ Name:
 Description:
     ${description}
 Args:
-${arguments.map { (name, desc) ->
+${if (arguments.isEmpty()) "    None" else arguments.map { (name, desc) ->
         "    $name (${desc.type}): ${desc.description}"
     }.joinToString("\n")}
 Returns:
-    ${returns.type ?: "str"}: ${returns.description ?: ""}
-Example:
-${examples.joinToString("\n") { "    $it" }}
+    ${if (returns.type.isBlank() && returns.description.isBlank()) "None" else "${returns.type}: ${returns.description}"}
+${ if(examples.isNotEmpty())"Example:\n    ${examples.joinToString("\n") { "    ${it.trim()}" }}\n" else ""}
 """.trimIndent()
 }
 
@@ -70,7 +69,7 @@ data class Document(
     @Id
     var id: Long = 0,
     var doc: String = "",
-    @HnswIndex(dimensions = EMBEDDING.DIMENSIONS, distanceType = VectorDistanceType.COSINE)
+    @HnswIndex(dimensions = EMBEDDING.DIMENSIONS, distanceType = VectorDistanceType.DEFAULT)
     @JsonSerialize(using = FloatArraySerializer::class)
     @JsonDeserialize(using = FloatArrayDeserializer::class)
     var embedding: FloatArray = FloatArray(EMBEDDING.DIMENSIONS.toInt())
@@ -180,6 +179,7 @@ object DocumentVecDB {
         // 检查数据库是否为空
         if (docBox.isEmpty) {
             loadDocumentsFromAssets(context, jsonlFileName)
+            Log.i("DocumentVecDB", "Loaded documents from assets, database size is ${docBox.count()}")
         }else{
             Log.e("DocumentVecDB", "Database size is ${docBox.count()}")
         }
@@ -250,11 +250,11 @@ object DocumentVecDB {
         ).build()
 
         // return the top 4 documents
-        return q.find().map {
+        return q.findWithScores().map {
             try {
-                mapper.readValue<APIDocs>(it.doc)
+                mapper.readValue<APIDocs>(it.get().doc)
             } catch (e: Exception) {
-                Log.e("DocumentVecDB", "Failed to parse document: ${it.doc} with error: $e")
+                Log.e("DocumentVecDB", "Failed to parse document: ${it.get().doc} with error: $e")
                 null
             }
         }.filterNotNull()

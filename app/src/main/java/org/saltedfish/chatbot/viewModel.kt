@@ -22,37 +22,12 @@ data class Photo(
     val request: ImageRequest?
 )
 val PROMPT = """<|im_start|>system
-
-You are an expert in composing functions. You are given a query and a set of possible functions. 
-Based on the query, you will need to make one or more function calls to achieve the purpose. 
-If none of the function can be used, point it out. If the given question lacks the parameters required by the function,
-also point it out. Remember you should not use functions that is not suitable for the query and only return the function call in tools call sections. 
-<|im_end|>
+You are an expert in composing function.<|im_end|>
 <|im_start|>user
 
-Here is a list of functions that you can invoke:
+Here is a list of functions:
 
 %DOC%
-
-Should you decide to return the function call(s), Put it in the format of 
-${'$'}
-result1 = func0(arg1="value1", arg2="value2", ...)
-result2 = func1(arg1="value1", arg2=result1, ...)
-...
-${'$'}
-
-
-You can do nested function calling in the following way:
-result1 = func0(arg1="value1", arg2="value2", ...)
-result2 = func1(arg1="value1", arg2=result1, ...)
-...
-This means that the value of arg2 in func1 is the return value from func0.
-
-
-
-
-If there is a way to achieve the purpose using the given functions, please provide the function call(s) in the above format.
-REMEMBER TO ONLY RETURN THE FUNCTION CALLS LIKE THE EXAMPLE ABOVE, NO OTHER INFORMATION SHOULD BE RETURNED.
 
 Now my query is: %QUERY%
 <|im_end|>
@@ -158,7 +133,7 @@ class ChatViewModel : ViewModel() {
             CoroutineScope(Dispatchers.IO).launch {
                 val query = docVecDB?.queryDocument(message.text)
                 Log.i("chatViewModel","query:$query")
-                val query_docs = query?.map { it.generateAPIDoc() }?.joinToString("\n\n==================================================\n\n")
+                val query_docs = query?.map { it.generateAPIDoc() }?.joinToString("==================================================\n")
                 val prompt = PROMPT.replace("%QUERY%",message.text).replace("%DOC%",query_docs?:"")
                 JNIBridge.run(bot_message.id,prompt,100,false)
             }
@@ -206,29 +181,49 @@ class ChatViewModel : ViewModel() {
             3->{
                 when(model_id){
                     0->"model/phonelm-1.5b-instruct-q4_0_4_4.mllm"
-                    1->"model/qwen-1.5-1.8b-chat-q4k.mllm"
-//                    1->"model/qwen-2.5-1.5b-instruct-q4_0_4_4.mllm"
+//                    1->"model/qwen-1.5-1.8b-chat-q4_0_4_4.mllm"
+                    1->"model/qwen-2.5-1.5b-instruct-q4_0_4_4.mllm"
                     else->"model/phonelm-1.5b-instruct-q4_0_4_4.mllm"
                 }
             }
-            1->"model/fuyu.mllm"
+            1->"model/fuyu-8b-q4_k.mllm"
             4->{
                 when(model_id){
-                    0->"model/phonelm-1.5b-droidcall-q4_0_4_4.mllm"
-                    1->"model/qwen-2.5-1.5b-droidcall-q4_0_4_4.mllm"
-                    else->"qwen-2.5-1.5b-droidcall-q4_0_4_4.mllm"
+                    0->"model/phonelm-1.5b-call-q8_0.mllm"
+                    1->"model/qwen-2.5-1.5b-call-q4_0_4_4.mllm"
+                    else->"qwen-2.5-1.5b-call-q4_0_4_4.mllm"
+//                    1->"model/qwen-2.5-1.5b-call-fp32.mllm"
+//                    else->"qwen-2.5-1.5b-call-fp32.mllm"
                 }
             }
             else -> "model/phonelm-1.5b-instruct-q4_0_4_4.mllm"
         }
-        val vacabPath = when(model_id){
-            1->"model/qwen2.5_vocab.mllm"
-            0->"model/phonelm_vocab.mllm"
-
-            else->{
-                if (modelType==1) "model/vocab_uni.mllm"
-                else "model/vocab.mllm"
+//        val vacabPath = when(model_id){
+//            1->"model/qwen2.5_vocab.mllm"
+//            0->"model/phonelm_vocab.mllm"
+//
+//            else->{
+//                if (modelType==1) "model/fuyu_vocab.mllm"
+//                else "model/vocab.mllm"
+//            }
+//      }
+        val vacabPath = when(modelType){
+            1->"model/fuyu_vocab.mllm"
+            3->{
+                when(model_id){
+                    0->"model/phonelm_vocab.mllm"
+                    1->"model/qwen2.5_vocab.mllm"
+                    else->""
+                }
             }
+            4->{
+                when(model_id){
+                    0->"model/phonelm_vocab.mllm"
+                    1->"model/qwen2.5_vocab.mllm"
+                    else->""
+                }
+            }
+            else -> ""
         }
         val mergePath = when (model_id){
             1->"model/qwen2.5_merges.txt"
