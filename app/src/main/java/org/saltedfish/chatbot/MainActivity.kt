@@ -1414,7 +1414,7 @@ fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController,s
         Row {
             EntryCard(icon = R.drawable.text,
                 backgroundColor = Color(0xEDADE6AA),
-                title = "Text Reader",
+                title = "Chat",
                 subtitle = "\" The meaning of life is ....\"",
                 onClick = { navController.navigate("chat/$selectedIndex?type=3") })
             Spacer(Modifier.width(8.dp))
