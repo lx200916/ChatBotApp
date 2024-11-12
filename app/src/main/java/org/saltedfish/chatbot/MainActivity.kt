@@ -814,6 +814,7 @@ fun Photo(navController: NavController, viewModel: PhotoViewModel = viewModel())
             // Handle the returned Uri
             it?.let {
                 bitmap.value = it
+
                 viewModel.setBitmap(it)
             }
             if (it == null) {

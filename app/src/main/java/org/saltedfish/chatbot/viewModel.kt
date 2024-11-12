@@ -392,7 +392,19 @@ class PhotoViewModel : ViewModel() {
         _message.postValue(msg)
     }
     fun setBitmap(bitmap: Bitmap){
+//        resize bitmap to 224
+        val width = bitmap.width
+        val height = bitmap.height
+        val newWidth = 224
+        val newHeight = 224
+        val scaleWidth = newWidth.toFloat() / width
+        val scaleHeight = newHeight.toFloat() / height
+        val matrix = android.graphics.Matrix()
+        matrix.postScale(scaleWidth, scaleHeight)
+        val bitmap = Bitmap.createBitmap(bitmap, 0, 0, width, height, matrix, true)
         _bitmap.value = bitmap
+        Log.e("PhotoViewModel","bitmap:${bitmap.width},${bitmap.height}")
+
         if (result_&&message.value==null){
             sendMessage("Describe this photo.",bitmap)
         }
