@@ -135,6 +135,9 @@ class ChatViewModel : ViewModel() {
                 Log.i("chatViewModel","query:$query")
                 val query_docs = query?.map { it.generateAPIDoc() }?.joinToString("==================================================\n")
                 val prompt = PROMPT.replace("%QUERY%",message.text).replace("%DOC%",query_docs?:"")
+                Log.i("prompt", prompt)
+                val len = prompt.length
+                Log.i("prompt Len  ","$len")
                 JNIBridge.run(bot_message.id,prompt,100,false)
             }
         }

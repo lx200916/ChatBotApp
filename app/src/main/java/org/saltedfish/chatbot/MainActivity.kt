@@ -1,11 +1,14 @@
 package org.saltedfish.chatbot
 
 import android.annotation.SuppressLint
+import android.app.Activity
+import android.content.ContentValues
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
 import android.graphics.Bitmap
 import android.icu.util.Calendar
+import android.media.RingtoneManager
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -133,13 +136,139 @@ import org.saltedfish.chatbot.ui.theme.ChatBotTheme
 import org.saltedfish.chatbot.ui.theme.Purple80
 import kotlin.reflect.KFunction
 import kotlin.reflect.full.memberFunctions
+import android.provider.MediaStore
+import android.provider.OpenableColumns
+import android.util.Log
+import androidx.activity.result.contract.ActivityResultContract
+import java.util.concurrent.CountDownLatch
 
 fun Context.getActivity(): ComponentActivity? = when (this) {
     is ComponentActivity -> this
     is ContextWrapper -> baseContext.getActivity()
     else -> null
 }
+
+private const val TAG = "MainActivity"
+
+class PickRingtone : ActivityResultContract<Int, Uri?>() {
+    override fun createIntent(context: Context, input: Int) =
+        Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
+            putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, input)
+        }
+
+    override fun parseResult(resultCode: Int, intent: Intent?) : Uri? {
+        if (resultCode != Activity.RESULT_OK) {
+            return null
+        }
+        return intent?.getParcelableExtra(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
+    }
+}
+
+class MyPickContact : ActivityResultContract<String, Uri?>() {
+    override fun createIntent(context: Context, input: String): Intent {
+        val mimeType = when (input) {
+            "PHONE" -> ContactsContract.CommonDataKinds.Phone.CONTENT_TYPE
+            "EMAIL" -> ContactsContract.CommonDataKinds.Email.CONTENT_TYPE
+            "ADDRESS" -> ContactsContract.CommonDataKinds.StructuredPostal.CONTENT_TYPE
+            else -> ContactsContract.Contacts.CONTENT_TYPE // Default to picking full contact
+        }
+        return Intent(Intent.ACTION_PICK).setType(mimeType)
+    }
+
+    override fun parseResult(resultCode: Int, intent: Intent?): Uri? {
+        return intent.takeIf { resultCode == Activity.RESULT_OK }?.data
+    }
+}
+
+open class CreateDocumentWithMime() : ActivityResultContract<Map<String, String>, Uri?>() {
+    override fun createIntent(context: Context, input: Map<String, String>): Intent {
+        return Intent(Intent.ACTION_CREATE_DOCUMENT)
+            .setType(input["mime_type"])
+            .putExtra(Intent.EXTRA_TITLE, input["file_name"])
+    }
+
+
+    final override fun parseResult(resultCode: Int, intent: Intent?): Uri? {
+        return intent.takeIf { resultCode == Activity.RESULT_OK }?.data
+    }
+}
+
 class MainActivity : ComponentActivity() {
+    var latch = CountDownLatch(1)
+    var uri = ""
+    var uris: List<String> = listOf()
+
+    val creatDocumentLauncher = registerForActivityResult(CreateDocumentWithMime()) { uri: Uri? ->
+        this.uri = uri.toString()
+        latch.countDown()
+    }
+
+    val openDocumentLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        this.uri = uri.toString()
+        latch.countDown()
+    }
+
+    val openMultipleDocumentLauncher = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri>? ->
+        this.uris = uris?.map { it.toString() } ?: emptyList()
+        latch.countDown()
+    }
+
+    val getMultipleContents = registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri>? ->
+        this.uris = uris?.map { it.toString() } ?: emptyList()
+        latch.countDown()
+    }
+
+    val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
+        this.uri = uri.toString()
+        var name = "未知文件"
+        val cursor = uri?.let { contentResolver.query(it, null, null, null, null) }
+        cursor?.use {
+            if (it.moveToFirst()) {
+                val index = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                if (index != -1) {
+                    name = it.getString(index)
+                }
+            }
+        }
+
+        latch.countDown()
+
+        MediaStore.Images.Media.EXTERNAL_CONTENT_URI
+    }
+
+    val getContact = registerForActivityResult(MyPickContact()) {uri: Uri? ->
+        this.uri = uri.toString()
+        latch.countDown()
+    }
+
+    val getRingtone = registerForActivityResult(PickRingtone()){uri: Uri? ->
+        this.uri = uri.toString()
+        latch.countDown()
+    }
+
+    val takePicLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success->
+        if (success){
+            Log.d(TAG, "takePicLauncher done!")
+        }
+        latch.countDown()
+    }
+
+    val takeVideoLauncher = registerForActivityResult(ActivityResultContracts.CaptureVideo()) { success->
+        if (success){
+            Log.d(TAG, "takeVideoLauncher done!")
+        }
+        latch.countDown()
+    }
+
+    val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted: Boolean ->
+        if (!isGranted) {
+            Log.d(TAG, "Permission denied")
+            finish()
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
@@ -235,97 +364,97 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-//    fun INTENT_ACTION_VIDEO_CAMERA() {
-//        val intent = Intent(MediaStore.INTENT_ACTION_VIDEO_CAMERA)
-//        if (intent.resolveActivity(packageManager) != null) {
-//            startActivity(intent)
-//        }
-//    }
-//
-//    fun INTENT_ACTION_STILL_IMAGE_CAMERA() {
-//        val intent = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
-//        if (intent.resolveActivity(packageManager) != null) {
-//            startActivity(intent)
-//        }
-//    }
-//
-//    fun ACTION_VIDEO_CAPTURE(): String {
-//        val videoURI = contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, ContentValues())
-//        videoURI?.let { uri ->
-//            takeVideoLauncher.launch(uri)
-//        }
-//        latch.await()
-//        latch = CountDownLatch(1)
-//        return videoURI.toString()
-//    }
-//
-//    fun ACTION_IMAGE_CAPTURE(): String {
-//        val photoURI = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, ContentValues())
-//        photoURI?.let { uri ->
-//            takePicLauncher.launch(uri)
-//        }
-//        latch.await()
-//        latch = CountDownLatch(1)
-//        return photoURI.toString()
-//    }
-//
-//    fun ACTION_GET_RINGTONE(): String {
-//        getRingtone.launch(RingtoneManager.TYPE_ALL)
-//        latch.await()
-//        latch = CountDownLatch(1)
-//        return uri
-//    }
-//
-//    fun ACTION_CREATE_DOCUMENT(mime_type: String, initial_name: String): String {
-//        creatDocumentLauncher.launch(mapOf("mime_type" to mime_type, "file_name" to initial_name))
-//        latch.await()
-//        latch = CountDownLatch(1)
-//        return uri
-//    }
-//
-//    fun ACTION_OPEN_DOCUMENT(mime_type: List<String>, allow_multiple: Boolean=false): List<String> {
-//        if (allow_multiple) {
-//            openMultipleDocumentLauncher.launch(mime_type.toTypedArray())
-//            latch.await()
-//            latch = CountDownLatch(1)
-//            return uris
-//        } else {
-//            openDocumentLauncher.launch(mime_type.toTypedArray())
-//            latch.await()
-//            latch = CountDownLatch(1)
-//            return listOf(uri)
-//        }
-//    }
-//
-//    fun ACTION_GET_CONTENT(mime_type: String, allow_multiple: Boolean=false): List<String> {
-//        if (allow_multiple) {
-//            getMultipleContents.launch(mime_type)
-//            latch.await()
-//            latch = CountDownLatch(1)
-//            return uris
-//        } else {
-//            getContent.launch(mime_type)
-//            latch.await()
-//            latch = CountDownLatch(1)
-//            return listOf(uri)
-//        }
-//    }
+    fun INTENT_ACTION_VIDEO_CAMERA() {
+        val intent = Intent(MediaStore.INTENT_ACTION_VIDEO_CAMERA)
+        if (intent.resolveActivity(packageManager) != null) {
+            startActivity(intent)
+        }
+    }
 
-//    fun ACTION_PICK(data_type: String="ALL"): String {
-//        getContact.launch(data_type)
-//        latch.await()
-//        latch = CountDownLatch(1)
-//        return uri
-//    }
-//
-//
-//    fun ACTION_VIEW_CONTACT(contact_uri: String) {
-//        val contactUri = Uri.parse(uri)
-//        val intent = Intent(Intent.ACTION_VIEW, contactUri)
-//        if (intent.resolveActivity(packageManager) != null) {
-//            startActivity(intent)
-//        }
-//    }
+    fun INTENT_ACTION_STILL_IMAGE_CAMERA() {
+        val intent = Intent(MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA)
+        if (intent.resolveActivity(packageManager) != null) {
+            startActivity(intent)
+        }
+    }
+
+    fun ACTION_VIDEO_CAPTURE(): String {
+        val videoURI = contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, ContentValues())
+        videoURI?.let { uri ->
+            takeVideoLauncher.launch(uri)
+        }
+        latch.await()
+        latch = CountDownLatch(1)
+        return videoURI.toString()
+    }
+
+    fun ACTION_IMAGE_CAPTURE(): String {
+        val photoURI = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, ContentValues())
+        photoURI?.let { uri ->
+            takePicLauncher.launch(uri)
+        }
+        latch.await()
+        latch = CountDownLatch(1)
+        return photoURI.toString()
+    }
+
+    fun ACTION_GET_RINGTONE(): String {
+        getRingtone.launch(RingtoneManager.TYPE_ALL)
+        latch.await()
+        latch = CountDownLatch(1)
+        return uri
+    }
+
+    fun ACTION_CREATE_DOCUMENT(mime_type: String, initial_name: String): String {
+        creatDocumentLauncher.launch(mapOf("mime_type" to mime_type, "file_name" to initial_name))
+        latch.await()
+        latch = CountDownLatch(1)
+        return uri
+    }
+
+    fun ACTION_OPEN_DOCUMENT(mime_type: List<String>, allow_multiple: Boolean=false): List<String> {
+        if (allow_multiple) {
+            openMultipleDocumentLauncher.launch(mime_type.toTypedArray())
+            latch.await()
+            latch = CountDownLatch(1)
+            return uris
+        } else {
+            openDocumentLauncher.launch(mime_type.toTypedArray())
+            latch.await()
+            latch = CountDownLatch(1)
+            return listOf(uri)
+        }
+    }
+
+    fun ACTION_GET_CONTENT(mime_type: String, allow_multiple: Boolean=false): List<String> {
+        if (allow_multiple) {
+            getMultipleContents.launch(mime_type)
+            latch.await()
+            latch = CountDownLatch(1)
+            return uris
+        } else {
+            getContent.launch(mime_type)
+            latch.await()
+            latch = CountDownLatch(1)
+            return listOf(uri)
+        }
+    }
+
+    fun ACTION_PICK(data_type: String="ALL"): String {
+        getContact.launch(data_type)
+        latch.await()
+        latch = CountDownLatch(1)
+        return uri
+    }
+
+
+    fun ACTION_VIEW_CONTACT(contact_uri: String) {
+        val contactUri = Uri.parse(uri)
+        val intent = Intent(Intent.ACTION_VIEW, contactUri)
+        if (intent.resolveActivity(packageManager) != null) {
+            startActivity(intent)
+        }
+    }
 
     fun send_message(phone_number: String, subject: String, body: String, attachments: List<String>? = null) {
         val intent = when {
@@ -360,6 +489,8 @@ class MainActivity : ComponentActivity() {
         bcc: List<String>? = null,
         attachments: List<String>? = null
     ) {
+
+        Log.d("send_email", "invoke send_email, to: $to, cc:$cc")
         // 根据附件数量选择合适的 Intent 动作
         val intent = when {
             attachments.isNullOrEmpty() -> Intent(Intent.ACTION_SENDTO).apply {
