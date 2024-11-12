@@ -254,7 +254,8 @@ class ChatViewModel : ViewModel() {
             }else -> 0
         }
         viewModelScope.launch(Dispatchers.IO)  {
-            val result = JNIBridge.Init( load_model, downloadsPath,modelPath, vacabPath,mergePath)
+            Log.i("chatViewModel", "load_model:$load_model on $_backendType")
+            val result = JNIBridge.Init( load_model, downloadsPath,modelPath, vacabPath,mergePath,_backendType)
             if (result){
                 addMessage(Message("Model ${MODEL_NAMES[load_model]} Loaded!",false,0),true)
                 _isLoading.postValue(false)

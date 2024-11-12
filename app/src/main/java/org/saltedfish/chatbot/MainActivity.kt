@@ -1121,6 +1121,7 @@ fun Chat(navController: NavController, chatType: Int = 0,modelId:Int=0,deviceId:
     LaunchedEffect(key1 = chatType, key2 = modelId) {
         vm.setModelType(chatType)
         vm.setModelId(modelId)
+        vm.setBackendType(deviceId)
     }
 
     val previewUri by vm.previewUri.observeAsState()
@@ -1547,7 +1548,7 @@ fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController,s
                 backgroundColor = Color(0xEDADE6AA),
                 title = "Chat",
                 subtitle = "\" The meaning of life is ....\"",
-                onClick = { navController.navigate("chat/$selectedIndex?type=3") })
+                onClick = { navController.navigate("chat/$selectedIndex?type=3&device=$selectedBackend") })
             Spacer(Modifier.width(8.dp))
             EntryCard(icon = R.drawable.image,
                 backgroundColor = Purple80,
@@ -1565,7 +1566,7 @@ fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController,s
                 backgroundColor = Color(0xEDF8BBD0),
                 title = "Takeover My Phone",
                 subtitle = "\" Show me the power\"",
-                onClick = { navController.navigate("chat/$selectedIndex?type=4") })
+                onClick = { navController.navigate("chat/$selectedIndex?type=4&device=$selectedBackend") })
             Spacer(Modifier.width(8.dp))
             EntryCard(icon = R.drawable.more_text,
                 // pick a blue style
