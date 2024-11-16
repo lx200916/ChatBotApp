@@ -138,6 +138,7 @@ class BertEmbedding : TextEmbedding() {
                 2,
                 "/sdcard/Download/model/",
                 "gte-small-fp32.mllm",
+                "",
                 "gte_vocab.mllm",
                 ""
             )

@@ -201,15 +201,25 @@ class ChatViewModel : ViewModel() {
             }
             else -> "model/phonelm-1.5b-instruct-q4_0_4_4.mllm"
         }
-//        val vacabPath = when(model_id){
-//            1->"model/qwen2.5_vocab.mllm"
-//            0->"model/phonelm_vocab.mllm"
-//
-//            else->{
-//                if (modelType==1) "model/fuyu_vocab.mllm"
-//                else "model/vocab.mllm"
-//            }
-//      }
+        val qnnmodelPath = when(modelType){
+            3->{
+                when(model_id){
+                    0->"model/phonelm-1.5b-instruct-int8.mllm"
+                    1->"model/qwen-2.5-1.5b-chat-int8.mllm"
+                    else->"model/phonelm-1.5b-instruct-int8.mllm"
+                }
+            }
+            1->""
+            4->{
+                when(model_id){
+                    0->"model/phonelm-1.5b-call-int8.mllm"
+                    1->"model/qwen-2.5-1.5b-call-int8.mllm"
+                    else->"qwen-2.5-1.5b-call-int8.mllm"
+                }
+            }
+            else -> "model/phonelm-1.5b-instruct-int8.mllm"
+        }
+
         val vacabPath = when(modelType){
             1->"model/fuyu_vocab.mllm"
             3->{
@@ -255,7 +265,7 @@ class ChatViewModel : ViewModel() {
         }
         viewModelScope.launch(Dispatchers.IO)  {
             Log.i("chatViewModel", "load_model:$load_model on $_backendType")
-            val result = JNIBridge.Init( load_model, downloadsPath,modelPath, vacabPath,mergePath,_backendType)
+            val result = JNIBridge.Init( load_model, downloadsPath,modelPath, qnnmodelPath, vacabPath,mergePath,_backendType)
             if (result){
                 addMessage(Message("Model ${MODEL_NAMES[load_model]} Loaded!",false,0),true)
                 _isLoading.postValue(false)
@@ -327,7 +337,7 @@ class VQAViewModel:ViewModel(){
             bitmap = Bitmap.createScaledBitmap(bitmap, 210, 453, true)
         }
         viewModelScope.launch(Dispatchers.IO) {
-            val result =JNIBridge.Init(1,"/sdcard/Download/","model/fuyu.mllm","model/vocab_uni.mllm")
+            val result =JNIBridge.Init(1,"/sdcard/Download/","model/fuyu.mllm","", "model/vocab_uni.mllm")
             result_ = result
             if (result&&selectedMessage.value!=null&& selectedMessage.value!! >-1){
                 sendMessage(messages[selectedMessage.value!!])
@@ -370,7 +380,7 @@ class SummaryViewModel:ViewModel(){
     fun initStatus(){
 
         viewModelScope.launch(Dispatchers.IO) {
-            val result =JNIBridge.Init(1,"/sdcard/Download/","model/qwen.mllm","model/vocab_qwen.mllm")
+            val result =JNIBridge.Init(1,"/sdcard/Download/","model/qwen.mllm","", "model/vocab_qwen.mllm")
             _result.postValue(result)
             if (!result){
                 updateMessageText("Fail to Load Models.")
@@ -424,7 +434,7 @@ class PhotoViewModel : ViewModel() {
     fun initStatus(){
 
         viewModelScope.launch(Dispatchers.IO) {
-            val result =JNIBridge.Init(1,"/sdcard/Download/","model/fuyu.mllm","model/vocab_uni.mllm")
+            val result =JNIBridge.Init(1,"/sdcard/Download/","model/fuyu.mllm","","model/vocab_uni.mllm")
             result_ = result
             if (result&&message.value==null&&_bitmap.value!=null){
                 sendMessage("Describe this photo.",_bitmap.value!!)

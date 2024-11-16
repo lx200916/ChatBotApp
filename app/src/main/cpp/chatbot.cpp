@@ -69,10 +69,11 @@ jstring charToJString(JNIEnv *env, string pat) {
 
 extern "C" JNIEXPORT jboolean JNICALL
 Java_org_saltedfish_chatbot_JNIBridge_init(JNIEnv *env, jobject thiz, jint modelType,
-                                           jstring basePath, jstring modelPath, jstring vacabPath,
+                                           jstring basePath, jstring modelPath, jstring qnnmodelPath, jstring vacabPath,
                                            jstring mergePath, jint backend
 ) {
     const std::string weights_path_c = string(env->GetStringUTFChars(modelPath, nullptr));
+    const std::string qnn_weights_path_c = string(env->GetStringUTFChars(qnnmodelPath, nullptr));
     const auto vacab_path_c = string(env->GetStringUTFChars(vacabPath, nullptr));
     const auto base_path_c = string(env->GetStringUTFChars(basePath, nullptr));
     const auto merge_path_c = string(env->GetStringUTFChars(mergePath, nullptr));
@@ -85,7 +86,7 @@ Java_org_saltedfish_chatbot_JNIBridge_init(JNIEnv *env, jobject thiz, jint model
     LOGE("%s", getenv("LD_LIBRARY_PATH"));
     LOGE("%s", getenv("ADSP_LIBRARY_PATH"));
     libHelper = new LibHelper();
-    if (!libHelper->setUp(base_path_c, weights_path_c, vacab_path_c, merge_path_c,
+    if (!libHelper->setUp(base_path_c, weights_path_c, qnn_weights_path_c, vacab_path_c, merge_path_c,
                           static_cast<PreDefinedModel>(modelType), static_cast<MLLMBackendType>(backend)))
         return JNI_FALSE;
     return JNI_TRUE;
@@ -159,14 +160,15 @@ Java_org_saltedfish_chatbot_JNIBridge_runForOnce(JNIEnv *env, jobject thiz, jstr
 extern "C"
 JNIEXPORT jlong JNICALL
 Java_org_saltedfish_chatbot_JNIBridge_initForInstance(JNIEnv *env, jobject thiz, jint model_type,
-                                                      jstring base_path, jstring model_path,
+                                                      jstring base_path, jstring model_path,jstring qnn_model_path,
                                                       jstring vacab_path, jstring merge_path) {
     const std::string weights_path_c = string(env->GetStringUTFChars(model_path, nullptr));
+    const std::string qnn_weights_path_c = string(env->GetStringUTFChars(qnn_model_path, nullptr));
     const auto vacab_path_c = string(env->GetStringUTFChars(vacab_path, nullptr));
     const auto base_path_c = string(env->GetStringUTFChars(base_path, nullptr));
     const auto merge_path_c = string(env->GetStringUTFChars(merge_path, nullptr));
     auto instance = new LibHelper();
-    if (!instance->setUp(base_path_c, weights_path_c, vacab_path_c, merge_path_c,
+    if (!instance->setUp(base_path_c, weights_path_c,qnn_weights_path_c, vacab_path_c, merge_path_c,
                          static_cast<PreDefinedModel>(model_type)))
         return -1;
     return reinterpret_cast<jlong>(instance);

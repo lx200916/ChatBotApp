@@ -22,7 +22,7 @@ object JNIBridge {
             it(id,value,isStream)
         }
     }
-    fun Init(modelType:Int,basePath:String,modelPath:String,vacabPath:String,mergePath:String="",backend: Int=0):Boolean{
+    fun Init(modelType:Int,basePath:String,modelPath:String,qnnmodelPath:String,vacabPath:String,mergePath:String="",backend: Int=0):Boolean{
         modelType_ = when(modelType){
             0->ModelType.QWEN
             1->ModelType.FUYU
@@ -34,15 +34,15 @@ object JNIBridge {
 //        val vacabPath=basePath+vacabPath
 //        val modelPath=basePath+modelPath
 //        val basePath=""
-        return init(modelType,basePath,modelPath,vacabPath,mergePath,backend)
+        return init(modelType,basePath,modelPath,qnnmodelPath,vacabPath,mergePath,backend)
     }
-    private external fun init(modelType:Int, basePath:String, modelPath:String, vacabPath:String,mergePath:String,backend:Int):Boolean
+    private external fun init(modelType:Int, basePath:String, modelPath:String, qnnmodelPath:String, vacabPath:String,mergePath:String,backend:Int):Boolean
     external fun run(id:Int, input:String, maxStep:Int, applyChatTemplate:Boolean=true)
     external fun runImage(id:Int,image:ByteArray,text:String,maxStep:Int)
     external fun runForOnce(input: String):FloatArray
     external fun setCallback()
     external fun stop()
-    external fun initForInstance(modelType:Int,basePath:String, modelPath:String, vacabPath:String,mergePath:String):Long
+    external fun initForInstance(modelType:Int,basePath:String, modelPath:String, qnnmodelPath:String, vacabPath:String,mergePath:String):Long
     external fun runForInstance(instance:Long,input:String):FloatArray
     external fun releaseInstance(instance:Long)
 }
