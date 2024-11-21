@@ -184,8 +184,9 @@ class ChatViewModel : ViewModel() {
             3->{
                 when(model_id){
                     0->"model/phonelm-1.5b-instruct-q4_0_4_4.mllm"
-//                    1->"model/qwen-1.5-1.8b-chat-q4_0_4_4.mllm"
                     1->"model/qwen-2.5-1.5b-instruct-q4_0_4_4.mllm"
+                    2->"model/qwen-1.5-1.8b-chat-q4_0_4_4.mllm"
+
                     else->"model/phonelm-1.5b-instruct-q4_0_4_4.mllm"
                 }
             }
@@ -194,6 +195,7 @@ class ChatViewModel : ViewModel() {
                 when(model_id){
                     0->"model/phonelm-1.5b-call-q8_0.mllm"
                     1->"model/qwen-2.5-1.5b-call-q4_0_4_4.mllm"
+                    2->"model/qwen-1.5-1.8b-call-q4_0_4_4.mllm"
                     else->"qwen-2.5-1.5b-call-q4_0_4_4.mllm"
 //                    1->"model/qwen-2.5-1.5b-call-fp32.mllm"
 //                    else->"qwen-2.5-1.5b-call-fp32.mllm"
@@ -206,6 +208,7 @@ class ChatViewModel : ViewModel() {
                 when(model_id){
                     0->"model/phonelm-1.5b-instruct-int8.mllm"
                     1->"model/qwen-2.5-1.5b-chat-int8.mllm"
+                    2->"model/qwen-1.5-1.8b-chat-int8.mllm"
                     else->"model/phonelm-1.5b-instruct-int8.mllm"
                 }
             }
@@ -214,6 +217,7 @@ class ChatViewModel : ViewModel() {
                 when(model_id){
                     0->"model/phonelm-1.5b-call-int8.mllm"
                     1->"model/qwen-2.5-1.5b-call-int8.mllm"
+                    2->"model/qwen-1.5-1.8b-call-int8.mllm"
                     else->"qwen-2.5-1.5b-call-int8.mllm"
                 }
             }
@@ -226,6 +230,7 @@ class ChatViewModel : ViewModel() {
                 when(model_id){
                     0->"model/phonelm_vocab.mllm"
                     1->"model/qwen2.5_vocab.mllm"
+                    2->"model/qwen1.5_vocab.mllm"
                     else->""
                 }
             }
@@ -233,6 +238,7 @@ class ChatViewModel : ViewModel() {
                 when(model_id){
                     0->"model/phonelm_vocab.mllm"
                     1->"model/qwen2.5_vocab.mllm"
+                    2->"model/qwen1.5_vocab.mllm"
                     else->""
                 }
             }
@@ -241,6 +247,7 @@ class ChatViewModel : ViewModel() {
         val mergePath = when (model_id){
             1->"model/qwen2.5_merges.txt"
             0->"model/phonelm_merges.txt"
+            2->"model/qwen1.5_merges.txt"
             else->""
         }
         var downloadsPath = "/sdcard/Download/"
@@ -254,10 +261,16 @@ class ChatViewModel : ViewModel() {
         val load_model = when (modelType) {
             1 -> 1
             3, 4 -> {
-                if (model_id == 0) {
-                    3
-                } else {
-                    0
+//                if (model_id == 0) {
+//                    3
+//                } else {
+//                    0
+//                }
+                when(model_id){
+                    0->3
+                    1->0
+                    2->4
+                    else->0
                 }
 
 

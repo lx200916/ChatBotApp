@@ -1,7 +1,7 @@
 package org.saltedfish.chatbot
 
 enum class ModelType{
-    QWEN,FUYU,EMBEDDING,PhoneLM,EMPTY
+    QWEN25,FUYU,EMBEDDING,PhoneLM,QWEN15,EMPTY
 }
 object JNIBridge {
     var modelType_:ModelType = ModelType.EMPTY
@@ -24,10 +24,11 @@ object JNIBridge {
     }
     fun Init(modelType:Int,basePath:String,modelPath:String,qnnmodelPath:String,vacabPath:String,mergePath:String="",backend: Int=0):Boolean{
         modelType_ = when(modelType){
-            0->ModelType.QWEN
+            0->ModelType.QWEN25
             1->ModelType.FUYU
             2->ModelType.EMBEDDING
             3->ModelType.PhoneLM
+            4->ModelType.QWEN15
             else->ModelType.EMPTY
         }
 //        val mergePath=basePath+mergePath

@@ -1020,7 +1020,7 @@ fun Home(navController: NavController) {
     var showBottomSheet by remember { mutableStateOf(false) }
     var selectedIndex by remember { mutableStateOf(0) }
     var selectedBackend by remember { mutableStateOf(0) }
-    val modelNames = listOf("PhoneLM","Qwen 2.5")
+    val modelNames = listOf("PhoneLM","Qwen 2.5","Qwen 1.5")
     val deviceNames = listOf("CPU","NPU")
 
     Scaffold(
