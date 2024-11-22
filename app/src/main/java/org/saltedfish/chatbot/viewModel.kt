@@ -33,7 +33,7 @@ Now my query is: %QUERY%
 <|im_end|>
 <|im_start|>assistant
 """
-val MODEL_NAMES = arrayOf("Qwen","","Bert","PhoneLM", "Qwen15")
+val MODEL_NAMES = arrayOf("Qwen 2.5","","Bert","PhoneLM", "Qwen 1.5")
 class ChatViewModel : ViewModel() {
 //    private var _inputText: MutableLiveData<String> = MutableLiveData<String>()
 //    val inputText: LiveData<String> = _inputText
