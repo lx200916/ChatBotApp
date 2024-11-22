@@ -33,7 +33,7 @@ Now my query is: %QUERY%
 <|im_end|>
 <|im_start|>assistant
 """
-val MODEL_NAMES = arrayOf("Qwen","","Bert","PhoneLM")
+val MODEL_NAMES = arrayOf("Qwen","","Bert","PhoneLM", "Qwen15")
 class ChatViewModel : ViewModel() {
 //    private var _inputText: MutableLiveData<String> = MutableLiveData<String>()
 //    val inputText: LiveData<String> = _inputText
@@ -230,7 +230,7 @@ class ChatViewModel : ViewModel() {
                 when(model_id){
                     0->"model/phonelm_vocab.mllm"
                     1->"model/qwen2.5_vocab.mllm"
-                    2->"model/qwen1.5_vocab.mllm"
+                    2->"model/qwen_vocab.mllm"
                     else->""
                 }
             }
@@ -238,7 +238,7 @@ class ChatViewModel : ViewModel() {
                 when(model_id){
                     0->"model/phonelm_vocab.mllm"
                     1->"model/qwen2.5_vocab.mllm"
-                    2->"model/qwen1.5_vocab.mllm"
+                    2->"model/qwen_vocab.mllm"
                     else->""
                 }
             }
@@ -247,7 +247,7 @@ class ChatViewModel : ViewModel() {
         val mergePath = when (model_id){
             1->"model/qwen2.5_merges.txt"
             0->"model/phonelm_merges.txt"
-            2->"model/qwen1.5_merges.txt"
+            2->"model/qwen_merges.txt"
             else->""
         }
         var downloadsPath = "/sdcard/Download/"
