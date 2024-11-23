@@ -1,5 +1,8 @@
 **mllm Chat Bot** is an Android application based on the multimodal LLM inference engine [**mllm**](https://github.com/UbiquitousLearning/mllm). It supports text/image conversations, Android Intent Invocation, and can support the use of CPU and some Hexagon NPUs.  
 
+> [!NOTE]  
+> ChatBot is a demo app of [MLLM Engine](https://github.com/UbiquitousLearning/mllm). Any error report or feature request should be opened in [**mllm**](https://github.com/UbiquitousLearning/mllm) Github Repo.
+
 ## Supported Functions  
 
 <table>
