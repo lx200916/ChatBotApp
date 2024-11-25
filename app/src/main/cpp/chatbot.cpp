@@ -94,12 +94,13 @@ Java_org_saltedfish_chatbot_JNIBridge_init(JNIEnv *env, jobject thiz, jint model
 extern "C" JNIEXPORT void JNICALL
 Java_org_saltedfish_chatbot_JNIBridge_run(JNIEnv *env, jobject thiz, jint id, jstring input,
                                           jint maxStep, jboolean chatTemplate) {
-    callback.reset(new callback_t([env, id](std::string str, bool isEnd) {
+    callback.reset(new callback_t([env, id](std::string str, bool isEnd, const vector<double> &profile) {
         try {
             __android_log_print(ANDROID_LOG_ERROR, "MLLM", "%s", str.c_str());
-
+            jdoubleArray jprofile = env->NewDoubleArray(profile.size());
+            env->SetDoubleArrayRegion(jprofile, 0, profile.size(), profile.data());
             jstring jstr = charToJString(env, str);
-            env->CallVoidMethod(g_jniBridgeObject, g_callbackMethod, id, jstr, !isEnd);
+            env->CallVoidMethod(g_jniBridgeObject, g_callbackMethod, id, jstr, !isEnd, jprofile);
             env->DeleteLocalRef(jstr);
         } catch (std::exception &e) {
             __android_log_print(ANDROID_LOG_ERROR, "MLLM", "%s", e.what());
@@ -113,12 +114,15 @@ Java_org_saltedfish_chatbot_JNIBridge_run(JNIEnv *env, jobject thiz, jint id, js
 extern "C" JNIEXPORT void JNICALL
 Java_org_saltedfish_chatbot_JNIBridge_runImage(JNIEnv *env, jobject obj, jint id, jbyteArray image,
                                                jstring text, jint maxStep) {
-    callback.reset(new callback_t([env, id](std::string str, bool isEnd) {
+    callback.reset(new callback_t([env, id](std::string str, bool isEnd,const vector<double>& profile) {
         try {
 //            __android_log_print(ANDROID_LOG_INFO,"MLLM","%s",str.c_str());
 
             jstring jstr = charToJString(env, str);
-            env->CallVoidMethod(g_jniBridgeObject, g_callbackMethod, id, jstr, !isEnd);
+            jdoubleArray jprofile = env->NewDoubleArray(profile.size());
+            env->SetDoubleArrayRegion(jprofile, 0, profile.size(), profile.data());
+
+            env->CallVoidMethod(g_jniBridgeObject, g_callbackMethod, id, jstr, !isEnd,jprofile);
             env->DeleteLocalRef(jstr);
         } catch (std::exception &e) {
             __android_log_print(ANDROID_LOG_ERROR, "MLLM", "%s", e.what());
@@ -137,7 +141,8 @@ Java_org_saltedfish_chatbot_JNIBridge_setCallback(JNIEnv *env, jobject thiz) {
     jclass jniBridgeClass = env->GetObjectClass(thiz);
 
     // Get a reference to the Callback method
-    g_callbackMethod = env->GetMethodID(jniBridgeClass, "Callback", "(ILjava/lang/String;Z)V");
+    //     fun Callback(id:Int,value: String,isStream:Boolean,profile:DoubleArray){
+    g_callbackMethod = env->GetMethodID(jniBridgeClass, "Callback", "(ILjava/lang/String;Z[D)V");
 
     // Store the JNIBridge object in a global variable
     g_jniBridgeObject = env->NewGlobalRef(thiz);

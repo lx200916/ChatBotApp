@@ -60,6 +60,9 @@ class ChatViewModel : ViewModel() {
     private var _modelId = MutableLiveData<Int>(0)
     val modelId = _modelId
     val modelType = _modelType
+    private var profiling_time = MutableLiveData<DoubleArray>()
+    val profilingTime = profiling_time
+
     private var _backendType = -1
     fun setModelType(type:Int){
         _modelType.value = type
@@ -87,7 +90,7 @@ class ChatViewModel : ViewModel() {
 //    }
     init {
 
-    JNIBridge.setCallback { id,value, isStream ->
+    JNIBridge.setCallback { id,value, isStream,profile ->
 //            val message = Message(
 //                value,
 //                false,
@@ -95,10 +98,11 @@ class ChatViewModel : ViewModel() {
 //                type = MessageType.TEXT,
 //                isStreaming = isStream
 //            )
-            Log.i("chatViewModel","id:$id,value:$value,isStream:$isStream")
+            Log.i("chatViewModel","id:$id,value:$value,isStream:$isStream profile:${profile.joinToString(",")}")
             updateMessage(id,value.trim().replace("|NEWLINE|","\n").replace("▁"," "),isStream)
             if (!isStream){
                 _isBusy.postValue(false)
+               if(profile.isNotEmpty()) profiling_time.postValue(profile)
             }
         }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -157,7 +161,8 @@ class ChatViewModel : ViewModel() {
 //            if (modelType.value == 0){
                 CoroutineScope(Dispatchers.IO).launch {
 //                val run_text = "A dialog, where User interacts with AI. AI is helpful, kind, obedient, honest, and knows its own limits.\nUser: ${message.text}"
-                    JNIBridge.run(bot_message.id,message.text,100)
+                   val profiling_time = JNIBridge.run(bot_message.id,message.text,100)
+                    Log.i("chatViewModel","profiling_time:$profiling_time")
                 }
             }else if (modelType.value ==1){
                 val image_content = if (message.type==MessageType.IMAGE){
@@ -336,7 +341,7 @@ class VQAViewModel:ViewModel(){
     }
 
     init {
-        JNIBridge.setCallback { id,value, isStream ->
+        JNIBridge.setCallback { id,value, isStream,profile ->
             Log.i("PhotoViewModel","id:$id,value:$value,isStream:$isStream")
             _answerText.postValue(value.trim().replace("|NEWLINE|","\n").replace("▁"," "))
         }
@@ -384,7 +389,7 @@ class SummaryViewModel:ViewModel(){
     }
 
     init {
-        JNIBridge.setCallback { id,value, isStream ->
+        JNIBridge.setCallback { id,value, isStream ,profile->
             Log.i("SummaryViewModel","id:$id,value:$value,isStream:$isStream")
             updateMessageText(value.trim().replace("|NEWLINE|","\n").replace("▁"," "))
         }
@@ -438,7 +443,7 @@ class PhotoViewModel : ViewModel() {
 
     }
     init {
-        JNIBridge.setCallback { id,value, isStream ->
+        JNIBridge.setCallback { id,value, isStream ,profile->
             Log.i("PhotoViewModel","id:$id,value:$value,isStream:$isStream")
             updateMessageText(value.trim().replace("|NEWLINE|","\n").replace("▁"," "))
         }

@@ -140,6 +140,7 @@ import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Log
 import androidx.activity.result.contract.ActivityResultContract
+import androidx.compose.ui.text.style.TextAlign
 import java.util.concurrent.CountDownLatch
 
 fun Context.getActivity(): ComponentActivity? = when (this) {
@@ -156,7 +157,7 @@ class PickRingtone : ActivityResultContract<Int, Uri?>() {
             putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, input)
         }
 
-    override fun parseResult(resultCode: Int, intent: Intent?) : Uri? {
+    override fun parseResult(resultCode: Int, intent: Intent?): Uri? {
         if (resultCode != Activity.RESULT_OK) {
             return null
         }
@@ -203,20 +204,23 @@ class MainActivity : ComponentActivity() {
         latch.countDown()
     }
 
-    val openDocumentLauncher = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-        this.uri = uri.toString()
-        latch.countDown()
-    }
+    val openDocumentLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+            this.uri = uri.toString()
+            latch.countDown()
+        }
 
-    val openMultipleDocumentLauncher = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri>? ->
-        this.uris = uris?.map { it.toString() } ?: emptyList()
-        latch.countDown()
-    }
+    val openMultipleDocumentLauncher =
+        registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris: List<Uri>? ->
+            this.uris = uris?.map { it.toString() } ?: emptyList()
+            latch.countDown()
+        }
 
-    val getMultipleContents = registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri>? ->
-        this.uris = uris?.map { it.toString() } ?: emptyList()
-        latch.countDown()
-    }
+    val getMultipleContents =
+        registerForActivityResult(ActivityResultContracts.GetMultipleContents()) { uris: List<Uri>? ->
+            this.uris = uris?.map { it.toString() } ?: emptyList()
+            latch.countDown()
+        }
 
     val getContent = registerForActivityResult(ActivityResultContracts.GetContent()) { uri: Uri? ->
         this.uri = uri.toString()
@@ -236,29 +240,31 @@ class MainActivity : ComponentActivity() {
         MediaStore.Images.Media.EXTERNAL_CONTENT_URI
     }
 
-    val getContact = registerForActivityResult(MyPickContact()) {uri: Uri? ->
+    val getContact = registerForActivityResult(MyPickContact()) { uri: Uri? ->
         this.uri = uri.toString()
         latch.countDown()
     }
 
-    val getRingtone = registerForActivityResult(PickRingtone()){uri: Uri? ->
+    val getRingtone = registerForActivityResult(PickRingtone()) { uri: Uri? ->
         this.uri = uri.toString()
         latch.countDown()
     }
 
-    val takePicLauncher = registerForActivityResult(ActivityResultContracts.TakePicture()) { success->
-        if (success){
-            Log.d(TAG, "takePicLauncher done!")
+    val takePicLauncher =
+        registerForActivityResult(ActivityResultContracts.TakePicture()) { success ->
+            if (success) {
+                Log.d(TAG, "takePicLauncher done!")
+            }
+            latch.countDown()
         }
-        latch.countDown()
-    }
 
-    val takeVideoLauncher = registerForActivityResult(ActivityResultContracts.CaptureVideo()) { success->
-        if (success){
-            Log.d(TAG, "takeVideoLauncher done!")
+    val takeVideoLauncher =
+        registerForActivityResult(ActivityResultContracts.CaptureVideo()) { success ->
+            if (success) {
+                Log.d(TAG, "takeVideoLauncher done!")
+            }
+            latch.countDown()
         }
-        latch.countDown()
-    }
 
     val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -292,9 +298,14 @@ class MainActivity : ComponentActivity() {
                         arguments = listOf(navArgument("id") { type = NavType.IntType },
                             navArgument("type") { type = NavType.IntType;defaultValue = 0 },
                             navArgument("device") { type = NavType.IntType;defaultValue = 0 }
-                            )
+                        )
                     ) {
-                        Chat(navController, it.arguments?.getInt("type") ?: 3, it.arguments?.getInt("id") ?: 0, it.arguments?.getInt("device") ?: 0)
+                        Chat(
+                            navController,
+                            it.arguments?.getInt("type") ?: 3,
+                            it.arguments?.getInt("id") ?: 0,
+                            it.arguments?.getInt("device") ?: 0
+                        )
                     }
                     composable("photo") {
                         Photo(navController)
@@ -309,14 +320,16 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+
     val functionsMap: Map<String, KFunction<*>> by lazy {
         this::class.memberFunctions
             .associateBy { it.name }
     }
-    val functions  by lazy {
-         Functions(context = this, outerFunctionsMap = functionsMap)
+    val functions by lazy {
+        Functions(context = this, outerFunctionsMap = functionsMap)
     }
-    fun web_search(query: String, engine: String="google") {
+
+    fun web_search(query: String, engine: String = "google") {
         // use google or baidu to search
         // directly open the browser using action view
         val searchUri = when (engine.lowercase()) {
@@ -330,7 +343,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun open_settings(setting_type:String = "general"){
+    fun open_settings(setting_type: String = "general") {
         val intent = when (setting_type) {
             "general" -> Intent(Settings.ACTION_SETTINGS)
             "wireless" -> Intent(Settings.ACTION_WIRELESS_SETTINGS)
@@ -379,7 +392,8 @@ class MainActivity : ComponentActivity() {
     }
 
     fun ACTION_VIDEO_CAPTURE(): String {
-        val videoURI = contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, ContentValues())
+        val videoURI =
+            contentResolver.insert(MediaStore.Video.Media.EXTERNAL_CONTENT_URI, ContentValues())
         videoURI?.let { uri ->
             takeVideoLauncher.launch(uri)
         }
@@ -389,7 +403,8 @@ class MainActivity : ComponentActivity() {
     }
 
     fun ACTION_IMAGE_CAPTURE(): String {
-        val photoURI = contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, ContentValues())
+        val photoURI =
+            contentResolver.insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, ContentValues())
         photoURI?.let { uri ->
             takePicLauncher.launch(uri)
         }
@@ -412,7 +427,10 @@ class MainActivity : ComponentActivity() {
         return uri
     }
 
-    fun ACTION_OPEN_DOCUMENT(mime_type: List<String>, allow_multiple: Boolean=false): List<String> {
+    fun ACTION_OPEN_DOCUMENT(
+        mime_type: List<String>,
+        allow_multiple: Boolean = false
+    ): List<String> {
         if (allow_multiple) {
             openMultipleDocumentLauncher.launch(mime_type.toTypedArray())
             latch.await()
@@ -426,7 +444,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun ACTION_GET_CONTENT(mime_type: String, allow_multiple: Boolean=false): List<String> {
+    fun ACTION_GET_CONTENT(mime_type: String, allow_multiple: Boolean = false): List<String> {
         if (allow_multiple) {
             getMultipleContents.launch(mime_type)
             latch.await()
@@ -440,7 +458,7 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun ACTION_PICK(data_type: String="ALL"): String {
+    fun ACTION_PICK(data_type: String = "ALL"): String {
         getContact.launch(data_type)
         latch.await()
         latch = CountDownLatch(1)
@@ -456,18 +474,28 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    fun send_message(phone_number: String, subject: String, body: String, attachments: List<String>? = null) {
+    fun send_message(
+        phone_number: String,
+        subject: String,
+        body: String,
+        attachments: List<String>? = null
+    ) {
         val intent = when {
             attachments.isNullOrEmpty() -> Intent(Intent.ACTION_SENDTO).apply {
                 data = Uri.parse("smsto:$phone_number") // 只设置短信协议
             }
+
             attachments.size == 1 -> Intent(Intent.ACTION_SEND).apply {
                 type = "*/*" // 单个附件，使用通用 MIME 类型
                 putExtra(Intent.EXTRA_STREAM, Uri.parse(attachments.first()))
             }
+
             else -> Intent(Intent.ACTION_SEND_MULTIPLE).apply {
                 type = "*/*" // 多个附件，使用通用 MIME 类型
-                putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(attachments.map { Uri.parse(it) }))
+                putParcelableArrayListExtra(
+                    Intent.EXTRA_STREAM,
+                    ArrayList(attachments.map { Uri.parse(it) })
+                )
             }
         }
 
@@ -496,13 +524,18 @@ class MainActivity : ComponentActivity() {
             attachments.isNullOrEmpty() -> Intent(Intent.ACTION_SENDTO).apply {
                 data = Uri.parse("mailto:") // 只设置邮件协议
             }
+
             attachments.size == 1 -> Intent(Intent.ACTION_SEND).apply {
                 type = "*/*" // 单个附件，使用通用 MIME 类型
                 putExtra(Intent.EXTRA_STREAM, Uri.parse(attachments.first()))
             }
+
             else -> Intent(Intent.ACTION_SEND_MULTIPLE).apply {
                 type = "*/*" // 多个附件，使用通用 MIME 类型
-                putParcelableArrayListExtra(Intent.EXTRA_STREAM, ArrayList(attachments.map { Uri.parse(it) }))
+                putParcelableArrayListExtra(
+                    Intent.EXTRA_STREAM,
+                    ArrayList(attachments.map { Uri.parse(it) })
+                )
             }
         }
 
@@ -527,7 +560,7 @@ class MainActivity : ComponentActivity() {
             "phone" to ContactsContract.CommonDataKinds.Phone.NUMBER,
             "address" to ContactsContract.CommonDataKinds.StructuredPostal.FORMATTED_ADDRESS
         )
-        contentResolver.query(contactUri, null, null, null, null)?.use { cursor->
+        contentResolver.query(contactUri, null, null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) {
                 val column = dataMap[key]
                 val dataIdx = cursor.getColumnIndex(column)
@@ -554,7 +587,12 @@ class MainActivity : ComponentActivity() {
     )
 
     @SuppressLint("Range")
-    private fun queryContactDetail(uri: Uri, column: String, selection: String, selectionArgs: Array<String>): String {
+    private fun queryContactDetail(
+        uri: Uri,
+        column: String,
+        selection: String,
+        selectionArgs: Array<String>
+    ): String {
         contentResolver.query(uri, arrayOf(column), selection, selectionArgs, null)?.use { cursor ->
             if (cursor.moveToFirst()) {
                 return cursor.getString(cursor.getColumnIndex(column))
@@ -592,7 +630,8 @@ class MainActivity : ComponentActivity() {
 
         contentResolver.query(uri, null, null, null, null)?.use { cursor ->
             if (cursor.moveToFirst()) {
-                val contactId = cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID))
+                val contactId =
+                    cursor.getString(cursor.getColumnIndex(ContactsContract.Contacts._ID))
                 val detail = detailsMap[key_lower]
                 if (key_lower == "uri") {
                     cursor.apply {
@@ -603,12 +642,18 @@ class MainActivity : ComponentActivity() {
                         // Gets the _ID column index
                         val idIndex = getColumnIndex(ContactsContract.Contacts._ID)
                         val currentId = getLong(idIndex)
-                        val selectedContactUri = ContactsContract.Contacts.getLookupUri(currentId, currentLookupKey)
+                        val selectedContactUri =
+                            ContactsContract.Contacts.getLookupUri(currentId, currentLookupKey)
                         return selectedContactUri.toString()
                     }
                 }
                 detail?.let {
-                    return queryContactDetail(it.uri, it.column, it.selection, arrayOf(contactId, *(it.extraArgs ?: emptyArray())))
+                    return queryContactDetail(
+                        it.uri,
+                        it.column,
+                        it.selection,
+                        arrayOf(contactId, *(it.extraArgs ?: emptyArray()))
+                    )
                 }
             }
         }
@@ -653,7 +698,7 @@ class MainActivity : ComponentActivity() {
     fun ACTION_INSERT_EVENT(
         TITLE: String,
         DESCRIPTION: String,
-        EVENT_LOCATION: String?=null,
+        EVENT_LOCATION: String? = null,
         EXTRA_EVENT_ALL_DAY: Boolean = false,
         EXTRA_EVENT_BEGIN_TIME: String? = null,
         EXTRA_EVENT_END_TIME: String? = null,
@@ -759,7 +804,7 @@ class MainActivity : ComponentActivity() {
             // so usually alarms are set for the next occurrence of the specified time.
             EXTRA_DAYS?.let {
                 val dayList = ArrayList<Int>()
-                it.forEach{day->
+                it.forEach { day ->
                     dayList.add(dayOfWeekToInt(day))
                 }
                 putExtra(AlarmClock.EXTRA_DAYS, dayList)
@@ -769,7 +814,7 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        if (intent.resolveActivity(packageManager) != null){
+        if (intent.resolveActivity(packageManager) != null) {
             startActivity(intent)
         }
     }
@@ -1020,8 +1065,8 @@ fun Home(navController: NavController) {
     var showBottomSheet by remember { mutableStateOf(false) }
     var selectedIndex by remember { mutableStateOf(0) }
     var selectedBackend by remember { mutableStateOf(0) }
-    val modelNames = listOf("PhoneLM","Qwen 2.5","Qwen 1.5")
-    val deviceNames = listOf("CPU","NPU")
+    val modelNames = listOf("PhoneLM", "Qwen 2.5", "Qwen 1.5")
+    val deviceNames = listOf("CPU", "NPU")
 
     Scaffold(
         containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
@@ -1049,7 +1094,11 @@ fun Home(navController: NavController) {
             modifier = Modifier.padding(it)
 
         ) {
-            MainEntryCards(navController = navController, selectedIndex = selectedIndex, selectedBackend = selectedBackend)
+            MainEntryCards(
+                navController = navController,
+                selectedIndex = selectedIndex,
+                selectedBackend = selectedBackend
+            )
         }
         if (showBottomSheet) {
             ModalBottomSheet(
@@ -1068,7 +1117,11 @@ fun Home(navController: NavController) {
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                    SingleChoiceSegmentedButtonRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp)
+                    ) {
                         modelNames.forEachIndexed { index, s ->
                             SegmentedButton(
                                 shape = SegmentedButtonDefaults.itemShape(
@@ -1091,7 +1144,11 @@ fun Home(navController: NavController) {
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth().padding(bottom = 10.dp)) {
+                    SingleChoiceSegmentedButtonRow(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 10.dp)
+                    ) {
                         deviceNames.forEachIndexed { index, s ->
                             SegmentedButton(
                                 shape = SegmentedButtonDefaults.itemShape(
@@ -1115,9 +1172,16 @@ fun Home(navController: NavController) {
     }
 }
 
+@SuppressLint("DefaultLocale")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
-fun Chat(navController: NavController, chatType: Int = 0,modelId:Int=0,deviceId:Int=0, vm: ChatViewModel = viewModel()) {
+fun Chat(
+    navController: NavController,
+    chatType: Int = 0,
+    modelId: Int = 0,
+    deviceId: Int = 0,
+    vm: ChatViewModel = viewModel()
+) {
     LaunchedEffect(key1 = chatType, key2 = modelId) {
         vm.setModelType(chatType)
         vm.setModelId(modelId)
@@ -1152,7 +1216,7 @@ fun Chat(navController: NavController, chatType: Int = 0,modelId:Int=0,deviceId:
             vm._scrollstate = scrollState
             vm.functions_ = (context.getActivity() as MainActivity).functions
             vm.docVecDB = DocumentVecDB
-            vm.docVecDB?.init(context,"api_vec.jsonl")
+            vm.docVecDB?.init(context, "api_vec.jsonl")
         }
     }
     LaunchedEffect(key1 = isBusy) {
@@ -1182,22 +1246,39 @@ fun Chat(navController: NavController, chatType: Int = 0,modelId:Int=0,deviceId:
                     //TODO
                     //Get timestamp
 //                    vm.sendInstruct(context, it)
-                    vm.sendMessage(context,it)
+                    vm.sendMessage(context, it)
                 }
             }
         }) {
 
         Column(
-            modifier = Modifier.fillMaxHeight()
+            modifier = Modifier
+                .fillMaxHeight()
+                .padding(it)
+                .consumeWindowInsets(it)
+                .systemBarsPadding()
+                .verticalScroll(scrollState)
 
         ) {
+            //write a banner widget
+            if (vm.profilingTime.value != null && vm.profilingTime.value?.size!! > 0) Row(
+                modifier = Modifier
+                    .fillMaxWidth().background(MaterialTheme.colorScheme.primaryContainer)
+                   , horizontalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    text = "Prefill: ${String.format("%.2f",vm.profilingTime.value!![1])}Tok/s, Decode: ${String.format("%.2f",vm.profilingTime.value!![2])}Tok/s",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+//                    center
+                    textAlign = TextAlign.Center
+                )
+            }
+
             Column(
                 Modifier
                     .fillMaxSize()
-                    .padding(it)
-                    .consumeWindowInsets(it)
-                    .systemBarsPadding()
-                    .verticalScroll(scrollState)
+
             ) {
 //                ChatBubble(message = Message("Hello", true, 0))
                 if (!isLoading) ChatBubble(
@@ -1516,7 +1597,12 @@ fun Greeting(name: String, modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun MainEntryCards(modifier: Modifier = Modifier, navController: NavController,selectedIndex:Int = 0,selectedBackend:Int = 0) {
+fun MainEntryCards(
+    modifier: Modifier = Modifier,
+    navController: NavController,
+    selectedIndex: Int = 0,
+    selectedBackend: Int = 0
+) {
     val context = LocalContext.current
 
     Column(

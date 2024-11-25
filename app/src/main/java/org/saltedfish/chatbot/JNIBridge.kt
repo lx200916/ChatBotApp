@@ -5,21 +5,21 @@ enum class ModelType{
 }
 object JNIBridge {
     var modelType_:ModelType = ModelType.EMPTY
-    private var callback: ((Int,String, Boolean) -> Unit)? = null
+    private var callback: ((Int,String, Boolean,DoubleArray) -> Unit)? = null
     init {
 //        Set Environment Variable
 
                  System.loadLibrary("chatbot")
       }
-    fun setCallback(callback: (Int,String,Boolean) -> Unit) {
+    fun setCallback(callback: (Int,String,Boolean,DoubleArray) -> Unit) {
         this.callback = callback
         setCallback()
     }
-    fun Callback(id:Int,value: String,isStream:Boolean) {
-//        callback?.invoke(value,isStream)
+    fun Callback(id:Int,value: String,isStream:Boolean,profile:DoubleArray){
+
 
         callback?.let {
-            it(id,value,isStream)
+            it(id,value,isStream,profile)
         }
     }
     fun Init(modelType:Int,basePath:String,modelPath:String,qnnmodelPath:String,vacabPath:String,mergePath:String="",backend: Int=0):Boolean{
