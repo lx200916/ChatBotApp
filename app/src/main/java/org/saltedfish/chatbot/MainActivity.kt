@@ -6,6 +6,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.icu.util.Calendar
 import android.media.RingtoneManager
@@ -139,9 +140,15 @@ import kotlin.reflect.full.memberFunctions
 import android.provider.MediaStore
 import android.provider.OpenableColumns
 import android.util.Log
+import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContract
 import androidx.compose.ui.text.style.TextAlign
+import org.saltedfish.chatbot.service.FloatingButtonService
 import java.util.concurrent.CountDownLatch
+import android.media.projection.MediaProjectionManager
+import org.saltedfish.chatbot.service.AIAccessibilityService
+import rikka.shizuku.Shizuku
+import rikka.shizuku.ShizukuProvider
 
 fun Context.getActivity(): ComponentActivity? = when (this) {
     is ComponentActivity -> this
@@ -274,8 +281,158 @@ class MainActivity : ComponentActivity() {
             finish()
         }
     }
+    companion object {
+        private const val REQUEST_CODE_OVERLAY_PERMISSION = 101
+        private const val REQUEST_CODE_ACCESSIBILITY_SETTINGS = 102
+    }
 
+    // 用于处理屏幕录制权限的结果
+    private val mediaProjectionLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        Log.e("mediaProjectionLauncher", "mediaProjectionLauncher result $result")
+        if (result.resultCode == Activity.RESULT_OK) {
+            // 保存屏幕录制的Intent数据
+            val intent = Intent(this, FloatingButtonService::class.java).apply {
+                putExtra("resultCode", result.resultCode)
+                putExtra("data", result.data)
+            }
+
+            // 启动悬浮按钮服务
+            startForegroundService(intent)
+
+            startService(Intent(this, AIAccessibilityService::class.java))
+            // 最小化应用
+            moveTaskToBack(true)
+        } else {
+            Toast.makeText(this, "需要屏幕录制权限才能继续", Toast.LENGTH_SHORT).show()
+        }
+    }
+    private fun requestOverlayPermission() {
+        val intent = Intent(
+            Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+            Uri.parse("package:$packageName")
+        )
+        startActivityForResult(intent, REQUEST_CODE_OVERLAY_PERMISSION)
+    }
+
+    private fun openAccessibilitySettings() {
+        Toast.makeText(this, "请启用AI Agent的无障碍服务", Toast.LENGTH_LONG).show()
+//        val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS)
+//        startActivityForResult(intent, REQUEST_CODE_ACCESSIBILITY_SETTINGS)
+        Shizuku.requestPermission(0)
+    }
+
+    private fun requestScreenCapturePermission() {
+        Log.e("requestScreenCapturePermission", "requestScreenCapturePermission")
+        val mediaProjectionManager = getSystemService(Context.MEDIA_PROJECTION_SERVICE) as MediaProjectionManager
+        mediaProjectionLauncher.launch(mediaProjectionManager.createScreenCaptureIntent())
+    }
+
+    private fun isAccessibilityServiceEnabled(): Boolean {
+//        val accessibilityServiceName = "${packageName}/${packageName}.service.AIAccessibilityService"
+//
+//        val enabledServices = Settings.Secure.getString(
+//            contentResolver,
+//            Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+//        ) ?: return false
+//
+//        return enabledServices.split(':').contains(accessibilityServiceName)
+        Shizuku.requestPermission(0)
+        return Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED
+    }
+    private fun checkAndRequestPermissions() {
+        // 检查悬浮窗权限
+        if (!Settings.canDrawOverlays(this)) {
+            requestOverlayPermission()
+            return
+        }
+
+        // 检查无障碍服务权限
+        if (!isAccessibilityServiceEnabled()) {
+            openAccessibilitySettings()
+            return
+        }
+
+        Toast.makeText(this, "所有权限已获取，可以启动服务", Toast.LENGTH_SHORT).show()
+        startAIAgent()
+    }
+    @Deprecated("Deprecated in Java")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        when (requestCode) {
+            REQUEST_CODE_OVERLAY_PERMISSION -> {
+                if (Settings.canDrawOverlays(this)) {
+                    Toast.makeText(this, "悬浮窗权限已获取", Toast.LENGTH_SHORT).show()
+                    checkAndRequestPermissions()
+                } else {
+                    Toast.makeText(this, "需要悬浮窗权限才能继续", Toast.LENGTH_SHORT).show()
+                }
+            }
+            REQUEST_CODE_ACCESSIBILITY_SETTINGS -> {
+                if (isAccessibilityServiceEnabled()) {
+                    Toast.makeText(this, "无障碍服务已启用", Toast.LENGTH_SHORT).show()
+                    checkAndRequestPermissions()
+                } else {
+                    Toast.makeText(this, "需要启用无障碍服务才能继续", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+    }
+    private fun startAIAgent() {
+        // 检查所有权限是否已授予
+        if (!Settings.canDrawOverlays(this)) {
+            requestOverlayPermission()
+            return
+        }
+        Shizuku.requestPermission(0);
+
+
+
+//        if (!isAccessibilityServiceEnabled()) {
+//            openAccessibilitySettings()
+//            return
+//        }
+
+
+        // 请求屏幕录制权限
+        requestScreenCapturePermission()
+    }
+    private val REQUEST_PERMISSION_RESULT_LISTENER = Shizuku.OnRequestPermissionResultListener { requestCode, grantResult ->
+//        if (grantResult == PackageManager.PERMISSION_GRANTED) {
+//            // 权限已授予
+//
+//        } else {
+//            // 权限被拒绝
+//            Toast.makeText(this, "Shizuku权限拒绝", Toast.LENGTH_SHORT).show()
+//        }
+//        if (Shizuku.isPreV11()) {
+//            // Pre-v11 is unsupported
+//            return false;
+//        }
+        Log.e("TAG", "Shizuku permission result: $requestCode, $grantResult")
+
+        if (Shizuku.checkSelfPermission() == PackageManager.PERMISSION_GRANTED) {
+            // Granted
+//            return true;
+            Toast.makeText(this, "Shizuku权限已授予", Toast.LENGTH_SHORT).show()
+
+        } else if (Shizuku.shouldShowRequestPermissionRationale()) {
+            // Users choose "Deny and don't ask again"
+            Toast.makeText(this, "Shizuku权限拒绝", Toast.LENGTH_SHORT).show()
+
+//            return false;
+        } else {
+            // Request the permission
+            Shizuku.requestPermission(requestCode);
+
+//            return false;
+        }
+
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
+        Shizuku.addRequestPermissionResultListener(REQUEST_PERMISSION_RESULT_LISTENER)
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
@@ -287,6 +444,8 @@ class MainActivity : ComponentActivity() {
             }
 
         }
+
+        startAIAgent()
         //enableEdgeToEdge()
         setContent {
             ChatBotTheme {
@@ -319,6 +478,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // 取消注册权限请求结果监听器
+        Shizuku.removeRequestPermissionResultListener(REQUEST_PERMISSION_RESULT_LISTENER)
     }
 
     val functionsMap: Map<String, KFunction<*>> by lazy {

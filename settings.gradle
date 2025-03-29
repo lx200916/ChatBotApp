@@ -16,3 +16,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "ChatBot"
 include ':app'
+include ':hidden-api'

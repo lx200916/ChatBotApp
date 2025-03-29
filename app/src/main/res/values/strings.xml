@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">ChatBot</string>
+    <string name="accessibility_title">此服务使用AI Agent执行自动化操作，包括屏幕分析和模拟点击</string>
 </resources>
